@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg7" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3d3d1f"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+  </defs>
+  <rect fill="url(#bg7)" width="400" height="400"/>
+  <rect x="130" y="120" width="140" height="180" rx="5" fill="#f5f5dc"/>
+  <circle cx="160" cy="160" r="20" fill="#ff6b6b"/>
+  <circle cx="220" cy="180" r="15" fill="#6bff6b"/>
+  <rect x="150" y="220" width="80" height="40" rx="5" fill="#6b6bff"/>
+  <polygon points="240,140 260,180 220,180" fill="#ffff6b"/>
+  <text x="200" y="350" font-family="sans-serif" font-size="24" font-weight="bold" fill="#00d4ff" text-anchor="middle">STICKER SET</text>
+</svg>
