@@ -18,11 +18,11 @@ interface CircleItem {
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
-const BASE_SIZE = 69;
+const BASE_SIZE = 60;
 const MIN_SIZE_RATIO = 0.65;
-const GAP = 9;
+const GAP = 8;
 
-// Calculate size based on ring
+// 링에 따른 크기 계산 (중앙이 크고 바깥이 작음)
 const getSizeForRing = (ring: number, maxRing: number): number => {
   if (maxRing === 0) return BASE_SIZE;
   const t = ring / Math.max(maxRing, 3);
@@ -81,23 +81,24 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       if (ring > 20) break;
     }
 
-    const maxRing = Math.max(...coords.map(c => c.ring));
+    // 최대 링 계산
+    const maxRing = coords.length > 0 ? coords[coords.length - 1].ring : 0;
+
+    // 원 중심 간 거리 = 지름 + GAP
+    const d = BASE_SIZE * 2 + GAP;
 
     for (let i = 0; i < Math.min(count, coords.length); i++) {
       const coord = coords[i];
-      const size = getSizeForRing(coord.ring, maxRing);
-      const innerSize = coord.ring > 0 ? getSizeForRing(coord.ring - 1, maxRing) : size;
-      const avgSize = (size + innerSize) / 2;
-      const spacing = avgSize * 2 + GAP;
 
-      const x = spacing * (Math.sqrt(3) * coord.q + Math.sqrt(3) / 2 * coord.r);
-      const y = spacing * (3 / 2 * coord.r);
+      // 표준 hexagonal axial → pixel 변환
+      const x = d * (coord.q + coord.r * 0.5);
+      const y = d * (coord.r * Math.sqrt(3) / 2);
 
       items.push({
         product: sortedProducts[i],
         x,
         y,
-        size,
+        size: getSizeForRing(coord.ring, maxRing),
         ring: coord.ring,
       });
     }
