@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const DATA_FILE = path.join(process.cwd(), 'src/data/products.json');
+import { prisma } from '@/lib/prisma';
 
 export async function PUT(request: Request) {
   try {
@@ -13,20 +10,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Invalid products data' }, { status: 400 });
     }
 
-    // Read existing data
-    const data = fs.readFileSync(DATA_FILE, 'utf-8');
-    const json = JSON.parse(data);
-
-    // Update priorities for each product
-    products.forEach((updatedProduct: { id: string; priority: number }) => {
-      const index = json.products.findIndex((p: { id: string }) => p.id === updatedProduct.id);
-      if (index !== -1) {
-        json.products[index].priority = updatedProduct.priority;
-      }
-    });
-
-    // Write updated data
-    fs.writeFileSync(DATA_FILE, JSON.stringify(json, null, 2));
+    // Update priorities using transaction
+    await prisma.$transaction(
+      products.map((product: { id: string; priority: number }) =>
+        prisma.product.update({
+          where: { id: product.id },
+          data: { priority: product.priority },
+        })
+      )
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
