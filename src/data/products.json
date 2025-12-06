@@ -16,7 +16,7 @@
       "client": "이디야커피",
       "image": "/samples/product2.svg",
       "description": "스테인리스 소재의 보온/보냉 텀블러입니다. 로고 각인 및 풀컬러 인쇄 가능합니다.",
-      "priority": 2,
+      "priority": 3,
       "createdAt": "2024-02-20"
     },
     {
@@ -25,7 +25,7 @@
       "client": "배스킨라빈스",
       "image": "/samples/product3.svg",
       "description": "아크릴 소재의 귀여운 캐릭터 키링 세트입니다. 다양한 디자인 커스터마이징이 가능합니다.",
-      "priority": 3,
+      "priority": 2,
       "createdAt": "2024-03-10"
     },
     {
