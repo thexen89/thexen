@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { Product, ViewState } from '@/lib/types';
 
 interface HexGridProps {
@@ -10,63 +10,52 @@ interface HexGridProps {
 
 interface CircleItem {
   product: Product;
-  baseX: number;
-  baseY: number;
   x: number;
   y: number;
   size: number;
-  baseSize: number;
   ring: number;
 }
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
-const BASE_SIZE = 52; // Base circle radius
-const MIN_SIZE_RATIO = 0.55; // Minimum size ratio at the edge
-const FISHEYE_RADIUS = 400; // Radius of fisheye effect
-const FISHEYE_DISTORTION = 2.5; // Distortion strength
+const BASE_SIZE = 46;
+const MIN_SIZE_RATIO = 0.65;
+const GAP = 6;
+
+// Calculate size based on ring
+const getSizeForRing = (ring: number, maxRing: number): number => {
+  if (maxRing === 0) return BASE_SIZE;
+  const t = ring / Math.max(maxRing, 3);
+  return BASE_SIZE * (1 - (1 - MIN_SIZE_RATIO) * t);
+};
 
 export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
-  const animationRef = useRef<number>();
+  const viewStateRef = useRef<ViewState>({ offsetX: 0, offsetY: 0, scale: 1 });
+  const hoveredRef = useRef<CircleItem | null>(null);
+  const renderRequestRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
 
-  const [viewState, setViewState] = useState<ViewState>({
-    offsetX: 0,
-    offsetY: 0,
-    scale: 1,
-  });
-
-  const [hoveredCircle, setHoveredCircle] = useState<CircleItem | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [clickStart, setClickStart] = useState({ x: 0, y: 0 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [dpr, setDpr] = useState(1);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const clickStartRef = useRef({ x: 0, y: 0 });
 
-  // Generate base hexagonal grid positions (Apple Watch honeycomb style)
-  const generateBasePositions = useCallback((count: number): Omit<CircleItem, 'x' | 'y' | 'size'>[] => {
-    const items: Omit<CircleItem, 'x' | 'y' | 'size'>[] = [];
+  // Memoize circle positions - only recalculate when products change
+  const circleItems = useMemo(() => {
+    const items: CircleItem[] = [];
     const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
+    const count = products.length;
 
     if (count === 0) return items;
 
-    // Tight hexagonal spacing - circles almost touching
-    const spacing = BASE_SIZE * 2.15; // Very tight spacing
-
-    // Hex to pixel using axial coordinates
-    const hexToPixel = (q: number, r: number) => {
-      const x = spacing * (Math.sqrt(3) * q + Math.sqrt(3) / 2 * r);
-      const y = spacing * (3 / 2 * r);
-      return { x, y };
-    };
-
-    // Generate spiral coordinates
-    const spiralCoords: { q: number; r: number }[] = [];
-    spiralCoords.push({ q: 0, r: 0 }); // Center
+    const coords: { q: number; r: number; ring: number }[] = [];
+    coords.push({ q: 0, r: 0, ring: 0 });
 
     let ring = 1;
-    while (spiralCoords.length < count) {
+    while (coords.length < count) {
       let q = 0;
       let r = -ring;
 
@@ -81,70 +70,175 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
       for (let side = 0; side < 6; side++) {
         for (let step = 0; step < ring; step++) {
-          if (spiralCoords.length >= count) break;
-          spiralCoords.push({ q, r });
+          if (coords.length >= count) break;
+          coords.push({ q, r, ring });
           q += moves[side].dq;
           r += moves[side].dr;
         }
-        if (spiralCoords.length >= count) break;
+        if (coords.length >= count) break;
       }
       ring++;
       if (ring > 20) break;
     }
 
-    // Convert to items with base positions
-    for (let i = 0; i < Math.min(count, spiralCoords.length); i++) {
-      const coord = spiralCoords[i];
-      const pos = hexToPixel(coord.q, coord.r);
+    const maxRing = Math.max(...coords.map(c => c.ring));
 
-      // Calculate ring number for this item
-      const itemRing = Math.max(Math.abs(coord.q), Math.abs(coord.r), Math.abs(-coord.q - coord.r));
+    for (let i = 0; i < Math.min(count, coords.length); i++) {
+      const coord = coords[i];
+      const size = getSizeForRing(coord.ring, maxRing);
+      const innerSize = coord.ring > 0 ? getSizeForRing(coord.ring - 1, maxRing) : size;
+      const avgSize = (size + innerSize) / 2;
+      const spacing = avgSize * 2 + GAP;
+
+      const x = spacing * (Math.sqrt(3) * coord.q + Math.sqrt(3) / 2 * coord.r);
+      const y = spacing * (3 / 2 * coord.r);
 
       items.push({
         product: sortedProducts[i],
-        baseX: pos.x,
-        baseY: pos.y,
-        baseSize: BASE_SIZE,
-        ring: itemRing,
+        x,
+        y,
+        size,
+        ring: coord.ring,
       });
     }
 
     return items;
   }, [products]);
 
-  // Apply fisheye distortion - center is larger, edges are smaller
-  const applyFisheyeEffect = useCallback((baseItems: Omit<CircleItem, 'x' | 'y' | 'size'>[]): CircleItem[] => {
-    return baseItems.map(item => {
-      const { baseX, baseY, baseSize } = item;
+  // Precomputed sorted items for hit testing (center items = higher priority)
+  const sortedForHitTest = useMemo(() => {
+    return [...circleItems].sort((a, b) => a.ring - b.ring);
+  }, [circleItems]);
 
-      // Calculate distance from center
-      const distance = Math.sqrt(baseX * baseX + baseY * baseY);
+  // Render function stored in ref to avoid dependency issues
+  const renderFnRef = useRef<() => void>(() => {});
 
-      // Fisheye size scaling - closer to center = larger
-      // Using smooth exponential decay
-      const maxDistance = FISHEYE_RADIUS;
-      const normalizedDist = Math.min(distance / maxDistance, 1);
+  // Update render function when dependencies change
+  useEffect(() => {
+    renderFnRef.current = () => {
+      const canvas = canvasRef.current;
+      if (!canvas || dimensions.width === 0) return;
 
-      // Size scaling: 1.0 at center, MIN_SIZE_RATIO at edge
-      const sizeScale = 1 - (1 - MIN_SIZE_RATIO) * Math.pow(normalizedDist, 0.7);
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) return;
 
-      // Position scaling - push items slightly outward as they get smaller
-      // This creates the fisheye perspective effect
-      const positionScale = 1 + normalizedDist * 0.15;
+      const { offsetX, offsetY, scale } = viewStateRef.current;
+      const hovered = hoveredRef.current;
+      const w = dimensions.width;
+      const h = dimensions.height;
+      const halfW = w / 2;
+      const halfH = h / 2;
 
-      return {
-        ...item,
-        x: baseX * positionScale,
-        y: baseY * positionScale,
-        size: baseSize * sizeScale,
-      };
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw non-hovered items first (no shadow for performance)
+      for (let i = circleItems.length - 1; i >= 0; i--) {
+        const item = circleItems[i];
+        if (hovered?.product.id === item.product.id) continue;
+
+        const screenX = (item.x + offsetX) * scale + halfW;
+        const screenY = (item.y + offsetY) * scale + halfH;
+        const radius = item.size * scale;
+
+        // Frustum culling
+        if (screenX < -radius || screenX > w + radius ||
+            screenY < -radius || screenY > h + radius) continue;
+
+        // Background
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fill();
+
+        // Image
+        const img = imagesRef.current.get(item.product.id);
+        if (img?.complete) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(img, screenX - radius, screenY - radius, radius * 2, radius * 2);
+          ctx.restore();
+        }
+
+        // Simple border
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Draw hovered item last with effects
+      if (hovered) {
+        const screenX = (hovered.x + offsetX) * scale + halfW;
+        const screenY = (hovered.y + offsetY) * scale + halfH;
+        const radius = hovered.size * scale * 1.12;
+
+        // Glow shadow
+        ctx.save();
+        ctx.shadowColor = '#00d4ff';
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fill();
+        ctx.restore();
+
+        // Image
+        const img = imagesRef.current.get(hovered.product.id);
+        if (img?.complete) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(img, screenX - radius, screenY - radius, radius * 2, radius * 2);
+          ctx.restore();
+        }
+
+        // Border
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Label
+        const labelY = screenY + radius + 16 * scale;
+        ctx.font = `bold ${Math.max(11, 12 * scale)}px "Pretendard", sans-serif`;
+        const textWidth = ctx.measureText(hovered.product.name).width;
+        const labelWidth = Math.max(textWidth + 20 * scale, 80 * scale);
+        const labelHeight = 36 * scale;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.beginPath();
+        ctx.roundRect(screenX - labelWidth / 2, labelY - labelHeight / 2, labelWidth, labelHeight, 6);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(hovered.product.name, screenX, labelY - 5 * scale);
+
+        ctx.fillStyle = '#00d4ff';
+        ctx.font = `${Math.max(9, 10 * scale)}px "Pretendard", sans-serif`;
+        ctx.fillText(hovered.product.client, screenX, labelY + 9 * scale);
+      }
+    };
+  }, [circleItems, dimensions, dpr]);
+
+  // Request render - lightweight function
+  const requestRender = () => {
+    if (renderRequestRef.current) return;
+    renderRequestRef.current = requestAnimationFrame(() => {
+      renderRequestRef.current = null;
+      renderFnRef.current();
     });
-  }, []);
+  };
 
-  const baseItems = generateBasePositions(products.length);
-  const circleItems = applyFisheyeEffect(baseItems);
-
-  // Load images
+  // Load images once
   useEffect(() => {
     products.forEach((product) => {
       if (!imagesRef.current.has(product.id)) {
@@ -153,23 +247,21 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         img.src = product.image;
         img.onload = () => {
           imagesRef.current.set(product.id, img);
+          requestRender();
         };
         img.onerror = () => {
           const placeholder = document.createElement('canvas');
           placeholder.width = 200;
           placeholder.height = 200;
-          const ctx = placeholder.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#1a1a2e';
-            ctx.fillRect(0, 0, 200, 200);
-            ctx.fillStyle = '#4a4a6a';
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(product.name, 100, 100);
+          const pctx = placeholder.getContext('2d');
+          if (pctx) {
+            pctx.fillStyle = '#1a1a2e';
+            pctx.fillRect(0, 0, 200, 200);
           }
           const placeholderImg = new Image();
           placeholderImg.src = placeholder.toDataURL();
           imagesRef.current.set(product.id, placeholderImg);
+          requestRender();
         };
       }
     });
@@ -179,6 +271,8 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
+        const pixelRatio = window.devicePixelRatio || 1;
+        setDpr(pixelRatio);
         setDimensions({
           width: containerRef.current.clientWidth,
           height: containerRef.current.clientHeight,
@@ -191,217 +285,77 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Draw circle with image
-  const drawCircle = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      item: CircleItem,
-      isHovered: boolean
-    ) => {
-      const { x, y, size, product } = item;
-      const { offsetX, offsetY, scale } = viewState;
-
-      const screenX = (x + offsetX) * scale + dimensions.width / 2;
-      const screenY = (y + offsetY) * scale + dimensions.height / 2;
-      const currentSize = size * scale * (isHovered ? 1.18 : 1);
-      const radius = currentSize;
-
-      // Skip if off screen
-      if (
-        screenX < -currentSize * 2 ||
-        screenX > dimensions.width + currentSize * 2 ||
-        screenY < -currentSize * 2 ||
-        screenY > dimensions.height + currentSize * 2
-      ) {
-        return;
-      }
-
-      // Draw shadow
-      ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-      ctx.shadowBlur = 8 * scale;
-      ctx.shadowOffsetX = 1 * scale;
-      ctx.shadowOffsetY = 2 * scale;
-
-      ctx.beginPath();
-      ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fill();
-      ctx.restore();
-
-      // Draw image if loaded
-      const img = imagesRef.current.get(product.id);
-      if (img && img.complete) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-        ctx.clip();
-
-        const imgSize = radius * 2;
-        ctx.drawImage(
-          img,
-          screenX - imgSize / 2,
-          screenY - imgSize / 2,
-          imgSize,
-          imgSize
-        );
-
-        ctx.restore();
-      }
-
-      // Draw subtle border
-      ctx.beginPath();
-      ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = isHovered ? '#00d4ff' : 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = isHovered ? 3 : 1;
-      ctx.stroke();
-
-      // Draw hover effects
-      if (isHovered) {
-        // Glow
-        ctx.save();
-        ctx.shadowColor = '#00d4ff';
-        ctx.shadowBlur = 25;
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = '#00d4ff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-
-        // Label
-        ctx.font = `bold ${Math.max(11, 12 * scale)}px "Pretendard", sans-serif`;
-        const labelY = screenY + radius + 18 * scale;
-        const textWidth = ctx.measureText(product.name).width;
-        const labelHeight = 38 * scale;
-        const labelWidth = Math.max(textWidth + 24 * scale, 90 * scale);
-
-        // Label background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
-        ctx.beginPath();
-        ctx.roundRect(
-          screenX - labelWidth / 2,
-          labelY - labelHeight / 2,
-          labelWidth,
-          labelHeight,
-          8 * scale
-        );
-        ctx.fill();
-
-        // Product name
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(product.name, screenX, labelY - 6 * scale);
-
-        // Client name
-        ctx.fillStyle = '#00d4ff';
-        ctx.font = `${Math.max(9, 10 * scale)}px "Pretendard", sans-serif`;
-        ctx.fillText(product.client, screenX, labelY + 10 * scale);
-      }
-    },
-    [viewState, dimensions]
-  );
-
-  // Main render loop
+  // Setup canvas
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || dimensions.width === 0) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    canvas.width = dimensions.width * dpr;
+    canvas.height = dimensions.height * dpr;
+    canvas.style.width = `${dimensions.width}px`;
+    canvas.style.height = `${dimensions.height}px`;
+    requestRender();
+  }, [dimensions, dpr]);
 
-    const render = () => {
-      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+  // Trigger render when items change
+  useEffect(() => {
+    requestRender();
+  }, [circleItems, dimensions]);
 
-      // Background - pure black like Apple Watch
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+  // Find circle at position - use precomputed sorted array
+  const findCircleAtPosition = (clientX: number, clientY: number): CircleItem | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
 
-      // Sort: draw outer rings first, then inner, hovered last
-      const sortedForDraw = [...circleItems].sort((a, b) => {
-        if (hoveredCircle?.product.id === a.product.id) return 1;
-        if (hoveredCircle?.product.id === b.product.id) return -1;
-        return b.ring - a.ring; // Outer rings first
-      });
+    const rect = canvas.getBoundingClientRect();
+    const { offsetX, offsetY, scale } = viewStateRef.current;
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
 
-      sortedForDraw.forEach((item) => {
-        const isHovered = hoveredCircle?.product.id === item.product.id;
-        drawCircle(ctx, item, isHovered);
-      });
+    const worldX = (mouseX - dimensions.width / 2) / scale - offsetX;
+    const worldY = (mouseY - dimensions.height / 2) / scale - offsetY;
 
-      animationRef.current = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+    for (const item of sortedForHitTest) {
+      const dx = worldX - item.x;
+      const dy = worldY - item.y;
+      if (dx * dx + dy * dy < item.size * item.size) {
+        return item;
       }
-    };
-  }, [circleItems, hoveredCircle, viewState, dimensions, drawCircle]);
+    }
+    return null;
+  };
 
-  // Find circle at position
-  const findCircleAtPosition = useCallback(
-    (clientX: number, clientY: number): CircleItem | null => {
-      const canvas = canvasRef.current;
-      if (!canvas) return null;
-
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = clientX - rect.left;
-      const mouseY = clientY - rect.top;
-
-      const worldX = (mouseX - dimensions.width / 2) / viewState.scale - viewState.offsetX;
-      const worldY = (mouseY - dimensions.height / 2) / viewState.scale - viewState.offsetY;
-
-      // Check from center outward (inner items have priority)
-      const sortedItems = [...circleItems].sort((a, b) => a.ring - b.ring);
-
-      for (const item of sortedItems) {
-        const dx = worldX - item.x;
-        const dy = worldY - item.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < item.size) {
-          return item;
-        }
-      }
-
-      return null;
-    },
-    [circleItems, viewState, dimensions]
-  );
-
-  // Mouse handlers
+  // Mouse handlers - use refs to avoid re-renders
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart({ x: e.clientX, y: e.clientY });
-    setClickStart({ x: e.clientX, y: e.clientY });
+    isDraggingRef.current = true;
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    clickStartRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      const dx = e.clientX - dragStart.x;
-      const dy = e.clientY - dragStart.y;
+    if (isDraggingRef.current) {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      const { scale } = viewStateRef.current;
 
-      setViewState((prev) => ({
-        ...prev,
-        offsetX: prev.offsetX + dx / prev.scale,
-        offsetY: prev.offsetY + dy / prev.scale,
-      }));
+      viewStateRef.current.offsetX += dx / scale;
+      viewStateRef.current.offsetY += dy / scale;
 
-      setDragStart({ x: e.clientX, y: e.clientY });
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      requestRender();
     } else {
       const circle = findCircleAtPosition(e.clientX, e.clientY);
-      setHoveredCircle(circle);
+      if (circle?.product.id !== hoveredRef.current?.product.id) {
+        hoveredRef.current = circle;
+        requestRender();
+      }
     }
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (isDragging) {
-      const dx = Math.abs(e.clientX - clickStart.x);
-      const dy = Math.abs(e.clientY - clickStart.y);
+    if (isDraggingRef.current) {
+      const dx = Math.abs(e.clientX - clickStartRef.current.x);
+      const dy = Math.abs(e.clientY - clickStartRef.current.y);
 
       if (dx < 5 && dy < 5) {
         const circle = findCircleAtPosition(e.clientX, e.clientY);
@@ -410,39 +364,52 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         }
       }
     }
-    setIsDragging(false);
+    isDraggingRef.current = false;
   };
 
   const handleMouseLeave = () => {
-    setIsDragging(false);
-    setHoveredCircle(null);
+    isDraggingRef.current = false;
+    if (hoveredRef.current) {
+      hoveredRef.current = null;
+      requestRender();
+    }
   };
 
-  // Wheel handler for zoom
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+  // Wheel event - store dimensions in ref for event handler
+  const dimensionsRef = useRef(dimensions);
+  dimensionsRef.current = dimensions;
 
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, viewState.scale * delta));
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
 
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+      const dims = dimensionsRef.current;
+      const { scale, offsetX, offsetY } = viewStateRef.current;
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * delta));
 
-    const worldX = (mouseX - dimensions.width / 2) / viewState.scale - viewState.offsetX;
-    const worldY = (mouseY - dimensions.height / 2) / viewState.scale - viewState.offsetY;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-    const newOffsetX = (mouseX - dimensions.width / 2) / newScale - worldX;
-    const newOffsetY = (mouseY - dimensions.height / 2) / newScale - worldY;
+      const worldX = (mouseX - dims.width / 2) / scale - offsetX;
+      const worldY = (mouseY - dims.height / 2) / scale - offsetY;
 
-    setViewState({
-      offsetX: newOffsetX,
-      offsetY: newOffsetY,
-      scale: newScale,
-    });
-  };
+      viewStateRef.current = {
+        offsetX: (mouseX - dims.width / 2) / newScale - worldX,
+        offsetY: (mouseY - dims.height / 2) / newScale - worldY,
+        scale: newScale,
+      };
+
+      requestRender();
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, []);
 
   // Touch handlers
   const touchRef = useRef<{ x: number; y: number; distance: number } | null>(null);
@@ -457,15 +424,8 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
-      touchRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        distance: 0,
-      };
-      touchStartRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-      };
+      touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, distance: 0 };
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     } else if (e.touches.length === 2) {
       touchRef.current = {
         x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
@@ -478,43 +438,30 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
-
     if (!touchRef.current) return;
+
+    const { scale } = viewStateRef.current;
 
     if (e.touches.length === 1) {
       const dx = e.touches[0].clientX - touchRef.current.x;
       const dy = e.touches[0].clientY - touchRef.current.y;
 
-      setViewState((prev) => ({
-        ...prev,
-        offsetX: prev.offsetX + dx / prev.scale,
-        offsetY: prev.offsetY + dy / prev.scale,
-      }));
+      viewStateRef.current.offsetX += dx / scale;
+      viewStateRef.current.offsetY += dy / scale;
 
-      touchRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        distance: 0,
-      };
+      touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, distance: 0 };
+      requestRender();
     } else if (e.touches.length === 2) {
       const newDistance = getTouchDistance(e.touches);
       const delta = newDistance / touchRef.current.distance;
-
-      const newScale = Math.max(
-        MIN_SCALE,
-        Math.min(MAX_SCALE, viewState.scale * delta)
-      );
-
-      setViewState((prev) => ({
-        ...prev,
-        scale: newScale,
-      }));
+      viewStateRef.current.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * delta));
 
       touchRef.current = {
         x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
         y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
         distance: newDistance,
       };
+      requestRender();
     }
   };
 
@@ -524,75 +471,63 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartRef.current.y);
 
       if (dx < 10 && dy < 10) {
-        const circle = findCircleAtPosition(
-          e.changedTouches[0].clientX,
-          e.changedTouches[0].clientY
-        );
-        if (circle) {
-          onProductClick(circle.product);
-        }
+        const circle = findCircleAtPosition(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        if (circle) onProductClick(circle.product);
       }
     }
     touchRef.current = null;
     touchStartRef.current = null;
   };
 
+  const handleZoom = (factor: number) => {
+    viewStateRef.current.scale = Math.max(
+      MIN_SCALE,
+      Math.min(MAX_SCALE, viewStateRef.current.scale * factor)
+    );
+    requestRender();
+  };
+
+  const handleReset = () => {
+    viewStateRef.current = { offsetX: 0, offsetY: 0, scale: 1 };
+    requestRender();
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden bg-black"
-    >
+    <div ref={containerRef} className="w-full h-full overflow-hidden bg-black">
       <canvas
         ref={canvasRef}
-        width={dimensions.width}
-        height={dimensions.height}
         className="cursor-grab active:cursor-grabbing"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{ touchAction: 'none' }}
       />
 
-      {/* Zoom controls */}
       <div className="absolute bottom-6 right-6 flex flex-col gap-2">
         <button
-          onClick={() =>
-            setViewState((prev) => ({
-              ...prev,
-              scale: Math.min(MAX_SCALE, prev.scale * 1.2),
-            }))
-          }
+          onClick={() => handleZoom(1.2)}
           className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-xl transition-colors backdrop-blur-sm"
         >
           +
         </button>
         <button
-          onClick={() =>
-            setViewState((prev) => ({
-              ...prev,
-              scale: Math.max(MIN_SCALE, prev.scale / 1.2),
-            }))
-          }
+          onClick={() => handleZoom(1 / 1.2)}
           className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-xl transition-colors backdrop-blur-sm"
         >
           -
         </button>
         <button
-          onClick={() =>
-            setViewState({ offsetX: 0, offsetY: 0, scale: 1 })
-          }
+          onClick={handleReset}
           className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-[10px] transition-colors backdrop-blur-sm"
         >
           Reset
         </button>
       </div>
 
-      {/* Instructions */}
       <div className="absolute bottom-6 left-6 text-white/40 text-sm">
         <p>드래그: 이동 | 스크롤: 확대/축소 | 클릭: 상세보기</p>
       </div>
