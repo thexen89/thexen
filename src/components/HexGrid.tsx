@@ -10,15 +10,21 @@ interface HexGridProps {
 
 interface CircleItem {
   product: Product;
+  baseX: number;
+  baseY: number;
   x: number;
   y: number;
   size: number;
+  baseSize: number;
+  ring: number;
 }
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
-const CIRCLE_SIZE = 55; // All circles same size
-const CIRCLE_GAP = 8; // Gap between circles
+const BASE_SIZE = 52; // Base circle radius
+const MIN_SIZE_RATIO = 0.55; // Minimum size ratio at the edge
+const FISHEYE_RADIUS = 400; // Radius of fisheye effect
+const FISHEYE_DISTORTION = 2.5; // Distortion strength
 
 export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,118 +44,39 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const [clickStart, setClickStart] = useState({ x: 0, y: 0 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Generate Apple Watch honeycomb style positions
-  // Uses offset coordinates for hexagonal grid but renders circles
-  const generateHoneycombPositions = useCallback((count: number): CircleItem[] => {
-    const items: CircleItem[] = [];
+  // Generate base hexagonal grid positions (Apple Watch honeycomb style)
+  const generateBasePositions = useCallback((count: number): Omit<CircleItem, 'x' | 'y' | 'size'>[] => {
+    const items: Omit<CircleItem, 'x' | 'y' | 'size'>[] = [];
     const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
 
     if (count === 0) return items;
 
-    // Hexagonal grid spacing
-    const diameter = CIRCLE_SIZE * 2;
-    const horizontalSpacing = diameter + CIRCLE_GAP;
-    const verticalSpacing = (diameter + CIRCLE_GAP) * 0.866; // sqrt(3)/2 for hex grid
+    // Tight hexagonal spacing - circles almost touching
+    const spacing = BASE_SIZE * 2.15; // Very tight spacing
 
-    let index = 0;
-    let ring = 0;
-
-    // Center position
-    if (index < count) {
-      items.push({
-        product: sortedProducts[index],
-        x: 0,
-        y: 0,
-        size: CIRCLE_SIZE,
-      });
-      index++;
-    }
-
-    // Spiral outward in hexagonal pattern
-    while (index < count) {
-      ring++;
-
-      // 6 directions for hexagonal grid
-      const directions = [
-        { dx: 1, dy: 0 },      // right
-        { dx: 0.5, dy: 1 },    // bottom-right
-        { dx: -0.5, dy: 1 },   // bottom-left
-        { dx: -1, dy: 0 },     // left
-        { dx: -0.5, dy: -1 },  // top-left
-        { dx: 0.5, dy: -1 },   // top-right
-      ];
-
-      // Start position for this ring (top-right)
-      let q = ring;
-      let r = 0;
-
-      for (let side = 0; side < 6; side++) {
-        for (let step = 0; step < ring; step++) {
-          if (index >= count) break;
-
-          // Convert hex coordinates to pixel position
-          const x = q * horizontalSpacing + (r % 2) * (horizontalSpacing / 2);
-          const y = r * verticalSpacing;
-
-          items.push({
-            product: sortedProducts[index],
-            x,
-            y,
-            size: CIRCLE_SIZE,
-          });
-          index++;
-
-          // Move to next hex in this direction
-          const dir = directions[side];
-          q += dir.dx;
-          r += dir.dy;
-        }
-        if (index >= count) break;
-      }
-    }
-
-    return items;
-  }, [products]);
-
-  // Alternative: Pure spiral hex grid (like Apple Watch)
-  const generateAppleWatchPositions = useCallback((count: number): CircleItem[] => {
-    const items: CircleItem[] = [];
-    const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
-
-    if (count === 0) return items;
-
-    const diameter = CIRCLE_SIZE * 2;
-    const spacing = diameter + CIRCLE_GAP;
-
-    // Hex grid with offset rows (Apple Watch style)
-    // Calculate positions using axial coordinates
+    // Hex to pixel using axial coordinates
     const hexToPixel = (q: number, r: number) => {
       const x = spacing * (Math.sqrt(3) * q + Math.sqrt(3) / 2 * r);
       const y = spacing * (3 / 2 * r);
       return { x, y };
     };
 
-    // Spiral pattern: center, then rings
+    // Generate spiral coordinates
     const spiralCoords: { q: number; r: number }[] = [];
+    spiralCoords.push({ q: 0, r: 0 }); // Center
 
-    // Center
-    spiralCoords.push({ q: 0, r: 0 });
-
-    // Generate rings
     let ring = 1;
     while (spiralCoords.length < count) {
-      // Start at top of ring and go clockwise
       let q = 0;
       let r = -ring;
 
-      // 6 sides of the hexagon ring
       const moves = [
-        { dq: 1, dr: 0 },   // move right
-        { dq: 0, dr: 1 },   // move down-right
-        { dq: -1, dr: 1 },  // move down-left
-        { dq: -1, dr: 0 },  // move left
-        { dq: 0, dr: -1 },  // move up-left
-        { dq: 1, dr: -1 },  // move up-right
+        { dq: 1, dr: 0 },
+        { dq: 0, dr: 1 },
+        { dq: -1, dr: 1 },
+        { dq: -1, dr: 0 },
+        { dq: 0, dr: -1 },
+        { dq: 1, dr: -1 },
       ];
 
       for (let side = 0; side < 6; side++) {
@@ -162,25 +89,60 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         if (spiralCoords.length >= count) break;
       }
       ring++;
-      if (ring > 20) break; // Safety limit
+      if (ring > 20) break;
     }
 
-    // Convert to items
+    // Convert to items with base positions
     for (let i = 0; i < Math.min(count, spiralCoords.length); i++) {
       const coord = spiralCoords[i];
       const pos = hexToPixel(coord.q, coord.r);
+
+      // Calculate ring number for this item
+      const itemRing = Math.max(Math.abs(coord.q), Math.abs(coord.r), Math.abs(-coord.q - coord.r));
+
       items.push({
         product: sortedProducts[i],
-        x: pos.x,
-        y: pos.y,
-        size: CIRCLE_SIZE,
+        baseX: pos.x,
+        baseY: pos.y,
+        baseSize: BASE_SIZE,
+        ring: itemRing,
       });
     }
 
     return items;
   }, [products]);
 
-  const circleItems = generateAppleWatchPositions(products.length);
+  // Apply fisheye distortion - center is larger, edges are smaller
+  const applyFisheyeEffect = useCallback((baseItems: Omit<CircleItem, 'x' | 'y' | 'size'>[]): CircleItem[] => {
+    return baseItems.map(item => {
+      const { baseX, baseY, baseSize } = item;
+
+      // Calculate distance from center
+      const distance = Math.sqrt(baseX * baseX + baseY * baseY);
+
+      // Fisheye size scaling - closer to center = larger
+      // Using smooth exponential decay
+      const maxDistance = FISHEYE_RADIUS;
+      const normalizedDist = Math.min(distance / maxDistance, 1);
+
+      // Size scaling: 1.0 at center, MIN_SIZE_RATIO at edge
+      const sizeScale = 1 - (1 - MIN_SIZE_RATIO) * Math.pow(normalizedDist, 0.7);
+
+      // Position scaling - push items slightly outward as they get smaller
+      // This creates the fisheye perspective effect
+      const positionScale = 1 + normalizedDist * 0.15;
+
+      return {
+        ...item,
+        x: baseX * positionScale,
+        y: baseY * positionScale,
+        size: baseSize * sizeScale,
+      };
+    });
+  }, []);
+
+  const baseItems = generateBasePositions(products.length);
+  const circleItems = applyFisheyeEffect(baseItems);
 
   // Load images
   useEffect(() => {
@@ -241,7 +203,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
       const screenX = (x + offsetX) * scale + dimensions.width / 2;
       const screenY = (y + offsetY) * scale + dimensions.height / 2;
-      const currentSize = size * scale * (isHovered ? 1.15 : 1);
+      const currentSize = size * scale * (isHovered ? 1.18 : 1);
       const radius = currentSize;
 
       // Skip if off screen
@@ -256,9 +218,9 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
       // Draw shadow
       ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-      ctx.shadowBlur = 10 * scale;
-      ctx.shadowOffsetX = 2 * scale;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+      ctx.shadowBlur = 8 * scale;
+      ctx.shadowOffsetX = 1 * scale;
       ctx.shadowOffsetY = 2 * scale;
 
       ctx.beginPath();
@@ -287,10 +249,10 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         ctx.restore();
       }
 
-      // Draw border
+      // Draw subtle border
       ctx.beginPath();
       ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = isHovered ? '#00d4ff' : 'rgba(255, 255, 255, 0.1)';
+      ctx.strokeStyle = isHovered ? '#00d4ff' : 'rgba(255, 255, 255, 0.08)';
       ctx.lineWidth = isHovered ? 3 : 1;
       ctx.stroke();
 
@@ -307,33 +269,35 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         ctx.stroke();
         ctx.restore();
 
-        // Label background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-        const labelY = screenY + radius + 15 * scale;
-        const labelHeight = 36 * scale;
-        const labelWidth = Math.max(ctx.measureText(product.name).width + 20 * scale, 80 * scale);
+        // Label
+        ctx.font = `bold ${Math.max(11, 12 * scale)}px "Pretendard", sans-serif`;
+        const labelY = screenY + radius + 18 * scale;
+        const textWidth = ctx.measureText(product.name).width;
+        const labelHeight = 38 * scale;
+        const labelWidth = Math.max(textWidth + 24 * scale, 90 * scale);
 
+        // Label background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
         ctx.beginPath();
         ctx.roundRect(
           screenX - labelWidth / 2,
           labelY - labelHeight / 2,
           labelWidth,
           labelHeight,
-          6 * scale
+          8 * scale
         );
         ctx.fill();
 
         // Product name
         ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${Math.max(11, 12 * scale)}px "Pretendard", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(product.name, screenX, labelY - 5 * scale);
+        ctx.fillText(product.name, screenX, labelY - 6 * scale);
 
         // Client name
         ctx.fillStyle = '#00d4ff';
         ctx.font = `${Math.max(9, 10 * scale)}px "Pretendard", sans-serif`;
-        ctx.fillText(product.client, screenX, labelY + 9 * scale);
+        ctx.fillText(product.client, screenX, labelY + 10 * scale);
       }
     },
     [viewState, dimensions]
@@ -350,15 +314,15 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     const render = () => {
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-      // Background
-      ctx.fillStyle = '#0a0a12';
+      // Background - pure black like Apple Watch
+      ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, dimensions.width, dimensions.height);
 
-      // Draw all circles (back to front based on y position for proper overlap)
+      // Sort: draw outer rings first, then inner, hovered last
       const sortedForDraw = [...circleItems].sort((a, b) => {
         if (hoveredCircle?.product.id === a.product.id) return 1;
         if (hoveredCircle?.product.id === b.product.id) return -1;
-        return a.y - b.y;
+        return b.ring - a.ring; // Outer rings first
       });
 
       sortedForDraw.forEach((item) => {
@@ -391,22 +355,20 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       const worldX = (mouseX - dimensions.width / 2) / viewState.scale - viewState.offsetX;
       const worldY = (mouseY - dimensions.height / 2) / viewState.scale - viewState.offsetY;
 
-      // Check all items, prioritize by distance
-      let closest: CircleItem | null = null;
-      let closestDist = Infinity;
+      // Check from center outward (inner items have priority)
+      const sortedItems = [...circleItems].sort((a, b) => a.ring - b.ring);
 
-      for (const item of circleItems) {
+      for (const item of sortedItems) {
         const dx = worldX - item.x;
         const dy = worldY - item.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < item.size && distance < closestDist) {
-          closest = item;
-          closestDist = distance;
+        if (distance < item.size) {
+          return item;
         }
       }
 
-      return closest;
+      return null;
     },
     [circleItems, viewState, dimensions]
   );
@@ -578,7 +540,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-hidden bg-[#0a0a12]"
+      className="w-full h-full overflow-hidden bg-black"
     >
       <canvas
         ref={canvasRef}
