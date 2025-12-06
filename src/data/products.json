@@ -7,7 +7,8 @@
       "image": "/samples/product1.svg",
       "description": "친환경 소재로 제작된 프리미엄 에코백입니다. 내구성이 뛰어나며 세탁이 가능합니다.",
       "priority": 1,
-      "createdAt": "2024-01-15"
+      "createdAt": "2024-01-15",
+      "shape": "circle"
     },
     {
       "id": "2",

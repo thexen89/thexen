@@ -2,25 +2,23 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Product, ViewState } from '@/lib/types';
-import { generateSpiralPositions, getHexVertices } from '@/lib/hexLayout';
 
 interface HexGridProps {
   products: Product[];
   onProductClick: (product: Product) => void;
 }
 
-interface HexItem {
+interface CircleItem {
   product: Product;
   x: number;
   y: number;
-  q: number;
-  r: number;
+  size: number;
 }
 
-const MIN_SCALE = 0.3;
-const MAX_SCALE = 2.5;
-const HEX_SIZE_BASE = 80;
-const HEX_GAP = 4;
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 3;
+const CIRCLE_SIZE = 55; // All circles same size
+const CIRCLE_GAP = 8; // Gap between circles
 
 export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,28 +32,159 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     scale: 1,
   });
 
-  const [hoveredHex, setHoveredHex] = useState<HexItem | null>(null);
+  const [hoveredCircle, setHoveredCircle] = useState<CircleItem | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [clickStart, setClickStart] = useState({ x: 0, y: 0 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Sort products by priority and generate hex positions
-  const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
-  const hexSize = HEX_SIZE_BASE + HEX_GAP;
-  const positions = generateSpiralPositions(sortedProducts.length, hexSize);
+  // Generate Apple Watch honeycomb style positions
+  // Uses offset coordinates for hexagonal grid but renders circles
+  const generateHoneycombPositions = useCallback((count: number): CircleItem[] => {
+    const items: CircleItem[] = [];
+    const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
 
-  const hexItems: HexItem[] = sortedProducts.map((product, index) => ({
-    product,
-    x: positions[index]?.x || 0,
-    y: positions[index]?.y || 0,
-    q: positions[index]?.q || 0,
-    r: positions[index]?.r || 0,
-  }));
+    if (count === 0) return items;
+
+    // Hexagonal grid spacing
+    const diameter = CIRCLE_SIZE * 2;
+    const horizontalSpacing = diameter + CIRCLE_GAP;
+    const verticalSpacing = (diameter + CIRCLE_GAP) * 0.866; // sqrt(3)/2 for hex grid
+
+    let index = 0;
+    let ring = 0;
+
+    // Center position
+    if (index < count) {
+      items.push({
+        product: sortedProducts[index],
+        x: 0,
+        y: 0,
+        size: CIRCLE_SIZE,
+      });
+      index++;
+    }
+
+    // Spiral outward in hexagonal pattern
+    while (index < count) {
+      ring++;
+
+      // 6 directions for hexagonal grid
+      const directions = [
+        { dx: 1, dy: 0 },      // right
+        { dx: 0.5, dy: 1 },    // bottom-right
+        { dx: -0.5, dy: 1 },   // bottom-left
+        { dx: -1, dy: 0 },     // left
+        { dx: -0.5, dy: -1 },  // top-left
+        { dx: 0.5, dy: -1 },   // top-right
+      ];
+
+      // Start position for this ring (top-right)
+      let q = ring;
+      let r = 0;
+
+      for (let side = 0; side < 6; side++) {
+        for (let step = 0; step < ring; step++) {
+          if (index >= count) break;
+
+          // Convert hex coordinates to pixel position
+          const x = q * horizontalSpacing + (r % 2) * (horizontalSpacing / 2);
+          const y = r * verticalSpacing;
+
+          items.push({
+            product: sortedProducts[index],
+            x,
+            y,
+            size: CIRCLE_SIZE,
+          });
+          index++;
+
+          // Move to next hex in this direction
+          const dir = directions[side];
+          q += dir.dx;
+          r += dir.dy;
+        }
+        if (index >= count) break;
+      }
+    }
+
+    return items;
+  }, [products]);
+
+  // Alternative: Pure spiral hex grid (like Apple Watch)
+  const generateAppleWatchPositions = useCallback((count: number): CircleItem[] => {
+    const items: CircleItem[] = [];
+    const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
+
+    if (count === 0) return items;
+
+    const diameter = CIRCLE_SIZE * 2;
+    const spacing = diameter + CIRCLE_GAP;
+
+    // Hex grid with offset rows (Apple Watch style)
+    // Calculate positions using axial coordinates
+    const hexToPixel = (q: number, r: number) => {
+      const x = spacing * (Math.sqrt(3) * q + Math.sqrt(3) / 2 * r);
+      const y = spacing * (3 / 2 * r);
+      return { x, y };
+    };
+
+    // Spiral pattern: center, then rings
+    const spiralCoords: { q: number; r: number }[] = [];
+
+    // Center
+    spiralCoords.push({ q: 0, r: 0 });
+
+    // Generate rings
+    let ring = 1;
+    while (spiralCoords.length < count) {
+      // Start at top of ring and go clockwise
+      let q = 0;
+      let r = -ring;
+
+      // 6 sides of the hexagon ring
+      const moves = [
+        { dq: 1, dr: 0 },   // move right
+        { dq: 0, dr: 1 },   // move down-right
+        { dq: -1, dr: 1 },  // move down-left
+        { dq: -1, dr: 0 },  // move left
+        { dq: 0, dr: -1 },  // move up-left
+        { dq: 1, dr: -1 },  // move up-right
+      ];
+
+      for (let side = 0; side < 6; side++) {
+        for (let step = 0; step < ring; step++) {
+          if (spiralCoords.length >= count) break;
+          spiralCoords.push({ q, r });
+          q += moves[side].dq;
+          r += moves[side].dr;
+        }
+        if (spiralCoords.length >= count) break;
+      }
+      ring++;
+      if (ring > 20) break; // Safety limit
+    }
+
+    // Convert to items
+    for (let i = 0; i < Math.min(count, spiralCoords.length); i++) {
+      const coord = spiralCoords[i];
+      const pos = hexToPixel(coord.q, coord.r);
+      items.push({
+        product: sortedProducts[i],
+        x: pos.x,
+        y: pos.y,
+        size: CIRCLE_SIZE,
+      });
+    }
+
+    return items;
+  }, [products]);
+
+  const circleItems = generateAppleWatchPositions(products.length);
 
   // Load images
   useEffect(() => {
-    sortedProducts.forEach((product) => {
+    products.forEach((product) => {
       if (!imagesRef.current.has(product.id)) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -64,7 +193,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
           imagesRef.current.set(product.id, img);
         };
         img.onerror = () => {
-          // Create placeholder for failed images
           const placeholder = document.createElement('canvas');
           placeholder.width = 200;
           placeholder.height = 200;
@@ -83,7 +211,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         };
       }
     });
-  }, [sortedProducts]);
+  }, [products]);
 
   // Handle resize
   useEffect(() => {
@@ -101,19 +229,20 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Draw hexagon with image
-  const drawHex = useCallback(
+  // Draw circle with image
+  const drawCircle = useCallback(
     (
       ctx: CanvasRenderingContext2D,
-      hexItem: HexItem,
+      item: CircleItem,
       isHovered: boolean
     ) => {
-      const { x, y, product } = hexItem;
+      const { x, y, size, product } = item;
       const { offsetX, offsetY, scale } = viewState;
 
       const screenX = (x + offsetX) * scale + dimensions.width / 2;
       const screenY = (y + offsetY) * scale + dimensions.height / 2;
-      const currentSize = HEX_SIZE_BASE * scale * (isHovered ? 1.08 : 1);
+      const currentSize = size * scale * (isHovered ? 1.15 : 1);
+      const radius = currentSize;
 
       // Skip if off screen
       if (
@@ -125,27 +254,28 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         return;
       }
 
-      const vertices = getHexVertices(screenX, screenY, currentSize);
+      // Draw shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 10 * scale;
+      ctx.shadowOffsetX = 2 * scale;
+      ctx.shadowOffsetY = 2 * scale;
 
-      // Create hex path
       ctx.beginPath();
-      ctx.moveTo(vertices[0].x, vertices[0].y);
-      for (let i = 1; i < vertices.length; i++) {
-        ctx.lineTo(vertices[i].x, vertices[i].y);
-      }
-      ctx.closePath();
-
-      // Draw background
+      ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
       ctx.fillStyle = '#1a1a2e';
       ctx.fill();
+      ctx.restore();
 
       // Draw image if loaded
       const img = imagesRef.current.get(product.id);
       if (img && img.complete) {
         ctx.save();
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
         ctx.clip();
 
-        const imgSize = currentSize * 1.8;
+        const imgSize = radius * 2;
         ctx.drawImage(
           img,
           screenX - imgSize / 2,
@@ -159,63 +289,51 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
       // Draw border
       ctx.beginPath();
-      ctx.moveTo(vertices[0].x, vertices[0].y);
-      for (let i = 1; i < vertices.length; i++) {
-        ctx.lineTo(vertices[i].x, vertices[i].y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = isHovered ? '#00d4ff' : '#2a2a4a';
-      ctx.lineWidth = isHovered ? 3 : 1.5;
+      ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = isHovered ? '#00d4ff' : 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = isHovered ? 3 : 1;
       ctx.stroke();
 
-      // Draw hover overlay
+      // Draw hover effects
       if (isHovered) {
+        // Glow
+        ctx.save();
+        ctx.shadowColor = '#00d4ff';
+        ctx.shadowBlur = 25;
         ctx.beginPath();
-        ctx.moveTo(vertices[0].x, vertices[0].y);
-        for (let i = 1; i < vertices.length; i++) {
-          ctx.lineTo(vertices[i].x, vertices[i].y);
-        }
-        ctx.closePath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
 
-        const gradient = ctx.createRadialGradient(
-          screenX,
-          screenY,
-          0,
-          screenX,
-          screenY,
-          currentSize
+        // Label background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        const labelY = screenY + radius + 15 * scale;
+        const labelHeight = 36 * scale;
+        const labelWidth = Math.max(ctx.measureText(product.name).width + 20 * scale, 80 * scale);
+
+        ctx.beginPath();
+        ctx.roundRect(
+          screenX - labelWidth / 2,
+          labelY - labelHeight / 2,
+          labelWidth,
+          labelHeight,
+          6 * scale
         );
-        gradient.addColorStop(0, 'rgba(0, 212, 255, 0.1)');
-        gradient.addColorStop(1, 'rgba(0, 212, 255, 0.3)');
-        ctx.fillStyle = gradient;
         ctx.fill();
 
-        // Draw product name
+        // Product name
         ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${14 * scale}px "Pretendard", sans-serif`;
+        ctx.font = `bold ${Math.max(11, 12 * scale)}px "Pretendard", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.fillText(product.name, screenX, labelY - 5 * scale);
 
-        // Background for text
-        const textY = screenY + currentSize * 0.6;
-        const textMetrics = ctx.measureText(product.name);
-        const padding = 8 * scale;
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(
-          screenX - textMetrics.width / 2 - padding,
-          textY - 10 * scale,
-          textMetrics.width + padding * 2,
-          20 * scale
-        );
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(product.name, screenX, textY);
-
-        // Draw client name
-        ctx.font = `${11 * scale}px "Pretendard", sans-serif`;
+        // Client name
         ctx.fillStyle = '#00d4ff';
-        ctx.fillText(product.client, screenX, textY + 18 * scale);
+        ctx.font = `${Math.max(9, 10 * scale)}px "Pretendard", sans-serif`;
+        ctx.fillText(product.client, screenX, labelY + 9 * scale);
       }
     },
     [viewState, dimensions]
@@ -232,46 +350,21 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     const render = () => {
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-      // Draw background
-      ctx.fillStyle = '#0f0f1a';
+      // Background
+      ctx.fillStyle = '#0a0a12';
       ctx.fillRect(0, 0, dimensions.width, dimensions.height);
 
-      // Draw grid pattern
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-      ctx.lineWidth = 1;
-      const gridSize = 50 * viewState.scale;
-      const offsetGridX = (viewState.offsetX * viewState.scale) % gridSize;
-      const offsetGridY = (viewState.offsetY * viewState.scale) % gridSize;
-
-      for (let x = offsetGridX; x < dimensions.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, dimensions.height);
-        ctx.stroke();
-      }
-      for (let y = offsetGridY; y < dimensions.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(dimensions.width, y);
-        ctx.stroke();
-      }
-
-      // Draw hexagons (from outer to inner for proper layering)
-      const sortedForDraw = [...hexItems].sort(
-        (a, b) => b.product.priority - a.product.priority
-      );
-
-      sortedForDraw.forEach((hexItem) => {
-        const isHovered = hoveredHex?.product.id === hexItem.product.id;
-        if (!isHovered) {
-          drawHex(ctx, hexItem, false);
-        }
+      // Draw all circles (back to front based on y position for proper overlap)
+      const sortedForDraw = [...circleItems].sort((a, b) => {
+        if (hoveredCircle?.product.id === a.product.id) return 1;
+        if (hoveredCircle?.product.id === b.product.id) return -1;
+        return a.y - b.y;
       });
 
-      // Draw hovered hex last (on top)
-      if (hoveredHex) {
-        drawHex(ctx, hoveredHex, true);
-      }
+      sortedForDraw.forEach((item) => {
+        const isHovered = hoveredCircle?.product.id === item.product.id;
+        drawCircle(ctx, item, isHovered);
+      });
 
       animationRef.current = requestAnimationFrame(render);
     };
@@ -283,11 +376,11 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [hexItems, hoveredHex, viewState, dimensions, drawHex]);
+  }, [circleItems, hoveredCircle, viewState, dimensions, drawCircle]);
 
-  // Find hex at position
-  const findHexAtPosition = useCallback(
-    (clientX: number, clientY: number): HexItem | null => {
+  // Find circle at position
+  const findCircleAtPosition = useCallback(
+    (clientX: number, clientY: number): CircleItem | null => {
       const canvas = canvasRef.current;
       if (!canvas) return null;
 
@@ -295,24 +388,27 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       const mouseX = clientX - rect.left;
       const mouseY = clientY - rect.top;
 
-      // Convert to world coordinates
       const worldX = (mouseX - dimensions.width / 2) / viewState.scale - viewState.offsetX;
       const worldY = (mouseY - dimensions.height / 2) / viewState.scale - viewState.offsetY;
 
-      // Find closest hex
-      for (const hexItem of hexItems) {
-        const dx = worldX - hexItem.x;
-        const dy = worldY - hexItem.y;
+      // Check all items, prioritize by distance
+      let closest: CircleItem | null = null;
+      let closestDist = Infinity;
+
+      for (const item of circleItems) {
+        const dx = worldX - item.x;
+        const dy = worldY - item.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < HEX_SIZE_BASE * 0.9) {
-          return hexItem;
+        if (distance < item.size && distance < closestDist) {
+          closest = item;
+          closestDist = distance;
         }
       }
 
-      return null;
+      return closest;
     },
-    [hexItems, viewState, dimensions]
+    [circleItems, viewState, dimensions]
   );
 
   // Mouse handlers
@@ -335,8 +431,8 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
       setDragStart({ x: e.clientX, y: e.clientY });
     } else {
-      const hex = findHexAtPosition(e.clientX, e.clientY);
-      setHoveredHex(hex);
+      const circle = findCircleAtPosition(e.clientX, e.clientY);
+      setHoveredCircle(circle);
     }
   };
 
@@ -345,11 +441,10 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       const dx = Math.abs(e.clientX - clickStart.x);
       const dy = Math.abs(e.clientY - clickStart.y);
 
-      // If it was a click (not a drag)
       if (dx < 5 && dy < 5) {
-        const hex = findHexAtPosition(e.clientX, e.clientY);
-        if (hex) {
-          onProductClick(hex.product);
+        const circle = findCircleAtPosition(e.clientX, e.clientY);
+        if (circle) {
+          onProductClick(circle.product);
         }
       }
     }
@@ -358,7 +453,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
   const handleMouseLeave = () => {
     setIsDragging(false);
-    setHoveredHex(null);
+    setHoveredCircle(null);
   };
 
   // Wheel handler for zoom
@@ -368,7 +463,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, viewState.scale * delta));
 
-    // Zoom towards mouse position
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -426,7 +520,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     if (!touchRef.current) return;
 
     if (e.touches.length === 1) {
-      // Pan
       const dx = e.touches[0].clientX - touchRef.current.x;
       const dy = e.touches[0].clientY - touchRef.current.y;
 
@@ -442,7 +535,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         distance: 0,
       };
     } else if (e.touches.length === 2) {
-      // Pinch zoom
       const newDistance = getTouchDistance(e.touches);
       const delta = newDistance / touchRef.current.distance;
 
@@ -470,12 +562,12 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       const dy = Math.abs(e.changedTouches[0].clientY - touchStartRef.current.y);
 
       if (dx < 10 && dy < 10) {
-        const hex = findHexAtPosition(
+        const circle = findCircleAtPosition(
           e.changedTouches[0].clientX,
           e.changedTouches[0].clientY
         );
-        if (hex) {
-          onProductClick(hex.product);
+        if (circle) {
+          onProductClick(circle.product);
         }
       }
     }
@@ -486,7 +578,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-hidden bg-[#0f0f1a]"
+      className="w-full h-full overflow-hidden bg-[#0a0a12]"
     >
       <canvas
         ref={canvasRef}
@@ -513,7 +605,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
               scale: Math.min(MAX_SCALE, prev.scale * 1.2),
             }))
           }
-          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white text-xl transition-colors"
+          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-xl transition-colors backdrop-blur-sm"
         >
           +
         </button>
@@ -524,7 +616,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
               scale: Math.max(MIN_SCALE, prev.scale / 1.2),
             }))
           }
-          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white text-xl transition-colors"
+          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-xl transition-colors backdrop-blur-sm"
         >
           -
         </button>
@@ -532,14 +624,14 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
           onClick={() =>
             setViewState({ offsetX: 0, offsetY: 0, scale: 1 })
           }
-          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center text-white text-xs transition-colors"
+          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-[10px] transition-colors backdrop-blur-sm"
         >
           Reset
         </button>
       </div>
 
       {/* Instructions */}
-      <div className="absolute bottom-6 left-6 text-white/50 text-sm">
+      <div className="absolute bottom-6 left-6 text-white/40 text-sm">
         <p>드래그: 이동 | 스크롤: 확대/축소 | 클릭: 상세보기</p>
       </div>
     </div>

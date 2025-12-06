@@ -6,6 +6,7 @@ export interface Product {
   description: string;
   priority: number;
   createdAt: string;
+  shape?: 'hexagon' | 'circle';
 }
 
 export interface HexPosition {
