@@ -18,9 +18,9 @@ interface CircleItem {
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
-const BASE_SIZE = 46;
+const BASE_SIZE = 69;
 const MIN_SIZE_RATIO = 0.65;
-const GAP = 6;
+const GAP = 9;
 
 // Calculate size based on ring
 const getSizeForRing = (ring: number, maxRing: number): number => {
