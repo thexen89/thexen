@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { Product, ViewState } from '@/lib/types';
+import { Product } from '@/lib/types';
 
 interface AdminHexGridProps {
   products: Product[];
@@ -18,8 +18,6 @@ interface CircleItem {
   index: number;
 }
 
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 3;
 const BASE_SIZE = 60;
 const MIN_SIZE_RATIO = 0.65;
 const GAP = 8;
@@ -35,17 +33,14 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
-  const viewStateRef = useRef<ViewState>({ offsetX: 0, offsetY: 0, scale: 1 });
   const hoveredRef = useRef<CircleItem | null>(null);
   const renderRequestRef = useRef<number | null>(null);
-  const isDraggingRef = useRef(false);
   const isReorderingRef = useRef(false);
   const draggedItemRef = useRef<CircleItem | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [dpr, setDpr] = useState(1);
-  const dragStartRef = useRef({ x: 0, y: 0 });
   const clickStartRef = useRef({ x: 0, y: 0 });
 
   // Generate circle positions
@@ -126,7 +121,6 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
       const ctx = canvas.getContext('2d', { alpha: false });
       if (!ctx) return;
 
-      const { offsetX, offsetY, scale } = viewStateRef.current;
       const hovered = hoveredRef.current;
       const dragged = draggedItemRef.current;
       const w = dimensions.width;
@@ -141,9 +135,9 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
       // Draw grid pattern for admin feel
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
       ctx.lineWidth = 1;
-      const gridSize = 50 * scale;
-      const startX = (halfW + offsetX * scale) % gridSize;
-      const startY = (halfH + offsetY * scale) % gridSize;
+      const gridSize = 50;
+      const startX = halfW % gridSize;
+      const startY = halfH % gridSize;
       for (let x = startX; x < w; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -162,9 +156,9 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         circleItems.forEach((item) => {
           if (item.product.id === dragged.product.id) return;
 
-          const screenX = (item.x + offsetX) * scale + halfW;
-          const screenY = (item.y + offsetY) * scale + halfH;
-          const radius = item.size * scale;
+          const screenX = item.x + halfW;
+          const screenY = item.y + halfH;
+          const radius = item.size;
 
           // Draw drop zone indicator
           ctx.beginPath();
@@ -183,9 +177,9 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         if (dragged?.product.id === item.product.id) continue;
         if (hovered?.product.id === item.product.id && !dragged) continue;
 
-        const screenX = (item.x + offsetX) * scale + halfW;
-        const screenY = (item.y + offsetY) * scale + halfH;
-        const radius = item.size * scale;
+        const screenX = item.x + halfW;
+        const screenY = item.y + halfH;
+        const radius = item.size;
 
         if (screenX < -radius || screenX > w + radius ||
             screenY < -radius || screenY > h + radius) continue;
@@ -213,17 +207,17 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
 
         // Draw priority number
         ctx.fillStyle = item.index === 0 ? '#00d4ff' : 'rgba(255, 255, 255, 0.6)';
-        ctx.font = `bold ${Math.max(10, 11 * scale)}px "Pretendard", sans-serif`;
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${item.index + 1}`, screenX, screenY + radius + 12 * scale);
+        ctx.fillText(`${item.index + 1}`, screenX, screenY + radius + 12);
       }
 
       // Draw hovered item (when not dragging)
       if (hovered && !dragged) {
-        const screenX = (hovered.x + offsetX) * scale + halfW;
-        const screenY = (hovered.y + offsetY) * scale + halfH;
-        const radius = hovered.size * scale * 1.08;
+        const screenX = hovered.x + halfW;
+        const screenY = hovered.y + halfH;
+        const radius = hovered.size * 1.08;
 
         ctx.save();
         ctx.shadowColor = '#00d4ff';
@@ -251,11 +245,11 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         ctx.stroke();
 
         // Label
-        const labelY = screenY + radius + 20 * scale;
-        ctx.font = `bold ${Math.max(11, 12 * scale)}px "Pretendard", sans-serif`;
+        const labelY = screenY + radius + 20;
+        ctx.font = 'bold 12px "Pretendard", sans-serif';
         const textWidth = ctx.measureText(hovered.product.name).width;
-        const labelWidth = Math.max(textWidth + 24 * scale, 100 * scale);
-        const labelHeight = 44 * scale;
+        const labelWidth = Math.max(textWidth + 24, 100);
+        const labelHeight = 44;
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         ctx.beginPath();
@@ -265,18 +259,18 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(hovered.product.name, screenX, labelY - 6 * scale);
+        ctx.fillText(hovered.product.name, screenX, labelY - 6);
 
         ctx.fillStyle = '#00d4ff';
-        ctx.font = `${Math.max(9, 10 * scale)}px "Pretendard", sans-serif`;
-        ctx.fillText(`#${hovered.index + 1} · ${hovered.product.client}`, screenX, labelY + 10 * scale);
+        ctx.font = '10px "Pretendard", sans-serif';
+        ctx.fillText(`#${hovered.index + 1} · ${hovered.product.client}`, screenX, labelY + 10);
       }
 
       // Draw dragged item last (on top)
       if (dragged) {
         const screenX = dragOffsetRef.current.x;
         const screenY = dragOffsetRef.current.y;
-        const radius = dragged.size * scale * 1.15;
+        const radius = dragged.size * 1.15;
 
         ctx.save();
         ctx.shadowColor = '#00d4ff';
@@ -307,9 +301,9 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
 
         // Drag instruction
         ctx.fillStyle = 'rgba(0, 212, 255, 0.9)';
-        ctx.font = `bold ${Math.max(10, 11 * scale)}px "Pretendard", sans-serif`;
+        ctx.font = 'bold 11px "Pretendard", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('다른 원 위에 놓으면 순서 교체', screenX, screenY + radius + 20 * scale);
+        ctx.fillText('다른 원 위에 놓으면 순서 교체', screenX, screenY + radius + 20);
       }
     };
   }, [circleItems, dimensions, dpr]);
@@ -387,12 +381,11 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
     if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const { offsetX, offsetY, scale } = viewStateRef.current;
     const mouseX = clientX - rect.left;
     const mouseY = clientY - rect.top;
 
-    const worldX = (mouseX - dimensions.width / 2) / scale - offsetX;
-    const worldY = (mouseY - dimensions.height / 2) / scale - offsetY;
+    const worldX = mouseX - dimensions.width / 2;
+    const worldY = mouseY - dimensions.height / 2;
 
     for (const item of sortedForHitTest) {
       const dx = worldX - item.x;
@@ -416,12 +409,8 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       };
-    } else {
-      // Start panning
-      isDraggingRef.current = true;
     }
 
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
     clickStartRef.current = { x: e.clientX, y: e.clientY };
     requestRender();
   };
@@ -436,16 +425,6 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       };
-      requestRender();
-    } else if (isDraggingRef.current) {
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      const { scale } = viewStateRef.current;
-
-      viewStateRef.current.offsetX += dx / scale;
-      viewStateRef.current.offsetY += dy / scale;
-
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
       requestRender();
     } else {
       const circle = findCircleAtPosition(e.clientX, e.clientY);
@@ -485,80 +464,20 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
           onReorder(updates);
         }
       }
-    } else if (isDraggingRef.current) {
-      const dx = Math.abs(e.clientX - clickStartRef.current.x);
-      const dy = Math.abs(e.clientY - clickStartRef.current.y);
-
-      if (dx < 5 && dy < 5) {
-        const circle = findCircleAtPosition(e.clientX, e.clientY);
-        if (circle) {
-          onProductClick(circle.product);
-        }
-      }
     }
 
-    isDraggingRef.current = false;
     isReorderingRef.current = false;
     draggedItemRef.current = null;
     requestRender();
   };
 
   const handleMouseLeave = () => {
-    isDraggingRef.current = false;
     isReorderingRef.current = false;
     draggedItemRef.current = null;
     if (hoveredRef.current) {
       hoveredRef.current = null;
       requestRender();
     }
-  };
-
-  const dimensionsRef = useRef(dimensions);
-  dimensionsRef.current = dimensions;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-
-      const dims = dimensionsRef.current;
-      const { scale, offsetX, offsetY } = viewStateRef.current;
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * delta));
-
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const worldX = (mouseX - dims.width / 2) / scale - offsetX;
-      const worldY = (mouseY - dims.height / 2) / scale - offsetY;
-
-      viewStateRef.current = {
-        offsetX: (mouseX - dims.width / 2) / newScale - worldX,
-        offsetY: (mouseY - dims.height / 2) / newScale - worldY,
-        scale: newScale,
-      };
-
-      requestRender();
-    };
-
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  const handleZoom = (factor: number) => {
-    viewStateRef.current.scale = Math.max(
-      MIN_SCALE,
-      Math.min(MAX_SCALE, viewStateRef.current.scale * factor)
-    );
-    requestRender();
-  };
-
-  const handleReset = () => {
-    viewStateRef.current = { offsetX: 0, offsetY: 0, scale: 1 };
-    requestRender();
   };
 
   return (
@@ -577,27 +496,6 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
       <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-3 text-sm">
         <p className="text-cyan-400 font-medium mb-1">순서 변경 모드</p>
         <p className="text-white/60 text-xs">원을 드래그하여 다른 원 위에 놓으면 순서가 바뀝니다</p>
-      </div>
-
-      <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-        <button
-          onClick={() => handleZoom(1.2)}
-          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-xl transition-colors backdrop-blur-sm"
-        >
-          +
-        </button>
-        <button
-          onClick={() => handleZoom(1 / 1.2)}
-          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-xl transition-colors backdrop-blur-sm"
-        >
-          -
-        </button>
-        <button
-          onClick={handleReset}
-          className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-[10px] transition-colors backdrop-blur-sm"
-        >
-          Reset
-        </button>
       </div>
     </div>
   );
