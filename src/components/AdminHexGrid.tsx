@@ -3,10 +3,17 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { Product } from '@/lib/types';
 
+type BackgroundTheme =
+  | 'dark' | 'darker' | 'checkerboard' | 'dots' | 'gradient'
+  | 'spring' | 'summer' | 'autumn' | 'winter'
+  | 'ocean' | 'sunset' | 'forest' | 'galaxy'
+  | 'minimal' | 'neon' | 'pastel';
+
 interface AdminHexGridProps {
   products: Product[];
   onReorder: (products: Product[]) => void;
   onProductClick: (product: Product) => void;
+  bgTheme?: BackgroundTheme;
 }
 
 interface CircleItem {
@@ -29,7 +36,7 @@ const getSizeForRing = (ring: number, maxRing: number): number => {
   return BASE_SIZE * (1 - (1 - MIN_SIZE_RATIO) * t);
 };
 
-export default function AdminHexGrid({ products, onReorder, onProductClick }: AdminHexGridProps) {
+export default function AdminHexGrid({ products, onReorder, onProductClick, bgTheme = 'dark' }: AdminHexGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -129,26 +136,304 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
       const halfH = h / 2;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = '#0f0f1a';
-      ctx.fillRect(0, 0, w, h);
 
-      // Draw grid pattern for admin feel
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-      ctx.lineWidth = 1;
-      const gridSize = 50;
-      const startX = halfW % gridSize;
-      const startY = halfH % gridSize;
-      for (let x = startX; x < w; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = startY; y < h; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
+      // Draw background based on theme
+      switch (bgTheme) {
+        case 'darker':
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(0, 0, w, h);
+          break;
+
+        case 'checkerboard':
+          ctx.fillStyle = '#0f0f1a';
+          ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = '#1a1a2e';
+          const checkSize = 20;
+          for (let gy = 0; gy < h; gy += checkSize) {
+            for (let gx = 0; gx < w; gx += checkSize) {
+              if ((Math.floor(gx / checkSize) + Math.floor(gy / checkSize)) % 2 === 0) {
+                ctx.fillRect(gx, gy, checkSize, checkSize);
+              }
+            }
+          }
+          break;
+
+        case 'dots':
+          ctx.fillStyle = '#0f0f1a';
+          ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+          const dotSpacing = 20;
+          const dotRadius = 1.5;
+          for (let dy = dotSpacing / 2; dy < h; dy += dotSpacing) {
+            for (let dx = dotSpacing / 2; dx < w; dx += dotSpacing) {
+              ctx.beginPath();
+              ctx.arc(dx, dy, dotRadius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          break;
+
+        case 'gradient': {
+          const gradient = ctx.createLinearGradient(0, 0, w, h);
+          gradient.addColorStop(0, '#1a1a2e');
+          gradient.addColorStop(0.5, '#0f0f1a');
+          gradient.addColorStop(1, '#1a1a2e');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, w, h);
+          break;
+        }
+
+        case 'minimal':
+          ctx.fillStyle = '#1a1a1a';
+          ctx.fillRect(0, 0, w, h);
+          break;
+
+        case 'spring': {
+          // 봄 벚꽃 테마 - 핑크 그라데이션
+          const springGrad = ctx.createLinearGradient(0, 0, w, h);
+          springGrad.addColorStop(0, '#fce4ec');
+          springGrad.addColorStop(0.5, '#f8bbd9');
+          springGrad.addColorStop(1, '#f48fb1');
+          ctx.fillStyle = springGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 벚꽃 꽃잎
+          ctx.fillStyle = 'rgba(255, 182, 193, 0.4)';
+          for (let i = 0; i < 50; i++) {
+            const px = (Math.sin(i * 7.3) * 0.5 + 0.5) * w;
+            const py = (Math.cos(i * 11.7) * 0.5 + 0.5) * h;
+            ctx.beginPath();
+            ctx.ellipse(px, py, 8, 5, i * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+
+        case 'summer': {
+          // 여름 바다 테마 - 파란 그라데이션
+          const summerGrad = ctx.createLinearGradient(0, 0, 0, h);
+          summerGrad.addColorStop(0, '#00bcd4');
+          summerGrad.addColorStop(0.3, '#0097a7');
+          summerGrad.addColorStop(1, '#006064');
+          ctx.fillStyle = summerGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 파도 효과
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 8; i++) {
+            ctx.beginPath();
+            for (let x = 0; x < w; x += 10) {
+              const y = h * 0.3 + i * 50 + Math.sin(x * 0.02 + i) * 20;
+              if (x === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+          break;
+        }
+
+        case 'autumn': {
+          // 가을 단풍 테마 - 오렌지/갈색 그라데이션
+          const autumnGrad = ctx.createLinearGradient(0, 0, w, h);
+          autumnGrad.addColorStop(0, '#5d4037');
+          autumnGrad.addColorStop(0.4, '#8d6e63');
+          autumnGrad.addColorStop(0.7, '#d84315');
+          autumnGrad.addColorStop(1, '#bf360c');
+          ctx.fillStyle = autumnGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 낙엽 점
+          const leafColors = ['#ff6f00', '#e65100', '#d84315', '#ffab00'];
+          for (let i = 0; i < 40; i++) {
+            const lx = (Math.sin(i * 5.1) * 0.5 + 0.5) * w;
+            const ly = (Math.cos(i * 8.3) * 0.5 + 0.5) * h;
+            ctx.fillStyle = leafColors[i % leafColors.length] + '66';
+            ctx.beginPath();
+            ctx.arc(lx, ly, 6 + (i % 5), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+
+        case 'winter': {
+          // 겨울 눈 테마 - 블루/화이트 그라데이션
+          const winterGrad = ctx.createLinearGradient(0, 0, 0, h);
+          winterGrad.addColorStop(0, '#e3f2fd');
+          winterGrad.addColorStop(0.5, '#bbdefb');
+          winterGrad.addColorStop(1, '#90caf9');
+          ctx.fillStyle = winterGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 눈송이
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          for (let i = 0; i < 60; i++) {
+            const sx = (Math.sin(i * 9.7) * 0.5 + 0.5) * w;
+            const sy = (Math.cos(i * 13.1) * 0.5 + 0.5) * h;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 2 + (i % 4), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+
+        case 'ocean': {
+          // 깊은 바다 테마
+          const oceanGrad = ctx.createRadialGradient(halfW, halfH, 0, halfW, halfH, Math.max(w, h) * 0.7);
+          oceanGrad.addColorStop(0, '#1a237e');
+          oceanGrad.addColorStop(0.5, '#0d47a1');
+          oceanGrad.addColorStop(1, '#01579b');
+          ctx.fillStyle = oceanGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 물결 효과
+          ctx.strokeStyle = 'rgba(100, 181, 246, 0.1)';
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 15; i++) {
+            ctx.beginPath();
+            for (let x = 0; x < w; x += 8) {
+              const y = halfH + Math.sin(x * 0.015 + i * 0.8) * (50 + i * 20);
+              if (x === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+          break;
+        }
+
+        case 'sunset': {
+          // 석양 테마
+          const sunsetGrad = ctx.createLinearGradient(0, 0, 0, h);
+          sunsetGrad.addColorStop(0, '#1a237e');
+          sunsetGrad.addColorStop(0.3, '#7b1fa2');
+          sunsetGrad.addColorStop(0.5, '#e91e63');
+          sunsetGrad.addColorStop(0.7, '#ff5722');
+          sunsetGrad.addColorStop(1, '#ff9800');
+          ctx.fillStyle = sunsetGrad;
+          ctx.fillRect(0, 0, w, h);
+          break;
+        }
+
+        case 'forest': {
+          // 숲 테마
+          const forestGrad = ctx.createLinearGradient(0, 0, 0, h);
+          forestGrad.addColorStop(0, '#1b5e20');
+          forestGrad.addColorStop(0.5, '#2e7d32');
+          forestGrad.addColorStop(1, '#33691e');
+          ctx.fillStyle = forestGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 나뭇잎 패턴
+          ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
+          for (let i = 0; i < 30; i++) {
+            const fx = (Math.sin(i * 6.3) * 0.5 + 0.5) * w;
+            const fy = (Math.cos(i * 9.1) * 0.5 + 0.5) * h;
+            ctx.beginPath();
+            ctx.ellipse(fx, fy, 15, 8, i * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+
+        case 'galaxy': {
+          // 우주/은하 테마
+          ctx.fillStyle = '#0a0a15';
+          ctx.fillRect(0, 0, w, h);
+          // 은하수 효과
+          const galaxyGrad = ctx.createRadialGradient(halfW * 0.7, halfH * 0.6, 0, halfW, halfH, Math.max(w, h) * 0.6);
+          galaxyGrad.addColorStop(0, 'rgba(103, 58, 183, 0.3)');
+          galaxyGrad.addColorStop(0.3, 'rgba(63, 81, 181, 0.2)');
+          galaxyGrad.addColorStop(0.6, 'rgba(33, 150, 243, 0.1)');
+          galaxyGrad.addColorStop(1, 'transparent');
+          ctx.fillStyle = galaxyGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 별들
+          for (let i = 0; i < 100; i++) {
+            const starX = (Math.sin(i * 7.7) * 0.5 + 0.5) * w;
+            const starY = (Math.cos(i * 11.3) * 0.5 + 0.5) * h;
+            const starSize = 0.5 + (i % 3) * 0.5;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + (i % 5) * 0.15})`;
+            ctx.beginPath();
+            ctx.arc(starX, starY, starSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+
+        case 'neon': {
+          // 네온 테마
+          ctx.fillStyle = '#0a0a0a';
+          ctx.fillRect(0, 0, w, h);
+          // 네온 그리드
+          ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+          ctx.lineWidth = 1;
+          const neonGridSize = 40;
+          for (let gx = 0; gx < w; gx += neonGridSize) {
+            ctx.beginPath();
+            ctx.moveTo(gx, 0);
+            ctx.lineTo(gx, h);
+            ctx.stroke();
+          }
+          for (let gy = 0; gy < h; gy += neonGridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, gy);
+            ctx.lineTo(w, gy);
+            ctx.stroke();
+          }
+          // 네온 글로우 원
+          const neonColors = ['#ff00ff', '#00ffff', '#ff0080'];
+          for (let i = 0; i < 5; i++) {
+            const nx = (Math.sin(i * 4.2) * 0.3 + 0.5) * w;
+            const ny = (Math.cos(i * 5.8) * 0.3 + 0.5) * h;
+            const neonGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, 150);
+            neonGrad.addColorStop(0, neonColors[i % 3] + '30');
+            neonGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = neonGrad;
+            ctx.fillRect(0, 0, w, h);
+          }
+          break;
+        }
+
+        case 'pastel': {
+          // 파스텔 테마
+          const pastelGrad = ctx.createLinearGradient(0, 0, w, h);
+          pastelGrad.addColorStop(0, '#fce4ec');
+          pastelGrad.addColorStop(0.25, '#e1f5fe');
+          pastelGrad.addColorStop(0.5, '#f3e5f5');
+          pastelGrad.addColorStop(0.75, '#e8f5e9');
+          pastelGrad.addColorStop(1, '#fff3e0');
+          ctx.fillStyle = pastelGrad;
+          ctx.fillRect(0, 0, w, h);
+          // 부드러운 원 패턴
+          const pastelColors = ['rgba(244, 143, 177, 0.2)', 'rgba(129, 212, 250, 0.2)', 'rgba(206, 147, 216, 0.2)'];
+          for (let i = 0; i < 20; i++) {
+            const px = (Math.sin(i * 3.7) * 0.5 + 0.5) * w;
+            const py = (Math.cos(i * 6.3) * 0.5 + 0.5) * h;
+            ctx.fillStyle = pastelColors[i % 3];
+            ctx.beginPath();
+            ctx.arc(px, py, 30 + (i % 4) * 15, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+
+        case 'dark':
+        default:
+          ctx.fillStyle = '#0f0f1a';
+          ctx.fillRect(0, 0, w, h);
+          // Draw subtle grid pattern
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+          ctx.lineWidth = 1;
+          const gridSize = 50;
+          const startX = halfW % gridSize;
+          const startY = halfH % gridSize;
+          for (let gx = startX; gx < w; gx += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(gx, 0);
+            ctx.lineTo(gx, h);
+            ctx.stroke();
+          }
+          for (let gy = startY; gy < h; gy += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, gy);
+            ctx.lineTo(w, gy);
+            ctx.stroke();
+          }
+          break;
       }
 
       // Draw drop zones when dragging
@@ -306,7 +591,7 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         ctx.fillText('다른 원 위에 놓으면 순서 교체', screenX, screenY + radius + 20);
       }
     };
-  }, [circleItems, dimensions, dpr]);
+  }, [circleItems, dimensions, dpr, bgTheme]);
 
   const requestRender = () => {
     if (renderRequestRef.current) return;
@@ -374,7 +659,7 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
 
   useEffect(() => {
     requestRender();
-  }, [circleItems, dimensions]);
+  }, [circleItems, dimensions, bgTheme]);
 
   const findCircleAtPosition = (clientX: number, clientY: number): CircleItem | null => {
     const canvas = canvasRef.current;
