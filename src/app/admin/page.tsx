@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Product } from '@/lib/types';
 import AdminHexGrid from '@/components/AdminHexGrid';
 
@@ -10,13 +10,16 @@ export default function AdminPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     client: '',
-    image: '',
+    images: [] as string[],
+    thumbnailIndex: 0,
     description: '',
   });
 
@@ -48,7 +51,8 @@ export default function AdminPage() {
       setFormData({
         name: product.name,
         client: product.client,
-        image: product.image,
+        images: product.images.length > 0 ? product.images : [],
+        thumbnailIndex: product.thumbnailIndex,
         description: product.description,
       });
     } else {
@@ -56,7 +60,8 @@ export default function AdminPage() {
       setFormData({
         name: '',
         client: '',
-        image: '',
+        images: [],
+        thumbnailIndex: 0,
         description: '',
       });
     }
@@ -69,7 +74,8 @@ export default function AdminPage() {
     setFormData({
       name: '',
       client: '',
-      image: '',
+      images: [],
+      thumbnailIndex: 0,
       description: '',
     });
   };
@@ -80,9 +86,10 @@ export default function AdminPage() {
 
     try {
       const method = editingProduct ? 'PUT' : 'POST';
+      const cleanedImages = formData.images.filter(img => img.trim() !== '');
       const body = editingProduct
-        ? { ...formData, id: editingProduct.id, priority: editingProduct.priority }
-        : { ...formData, priority: products.length + 1 };
+        ? { ...formData, images: cleanedImages, id: editingProduct.id, priority: editingProduct.priority }
+        : { ...formData, images: cleanedImages, priority: products.length + 1 };
 
       const res = await fetch('/api/products', {
         method,
@@ -259,7 +266,7 @@ export default function AdminPage() {
                         <td className="px-4 py-3">
                           <div className="w-12 h-12 bg-gray-700 rounded-full overflow-hidden">
                             <img
-                              src={product.image}
+                              src={product.images[product.thumbnailIndex] || product.images[0]}
                               alt={product.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
@@ -360,18 +367,142 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  이미지 경로 *
+                  이미지 *
                 </label>
+
+                {/* 이미지 미리보기 */}
+                {formData.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {formData.images.map((img, idx) => (
+                      <div
+                        key={idx}
+                        className={`relative group w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                          formData.thumbnailIndex === idx
+                            ? 'border-cyan-500'
+                            : 'border-gray-600'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`이미지 ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                          {formData.thumbnailIndex !== idx && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, thumbnailIndex: idx })}
+                              className="p-1.5 bg-cyan-500 rounded text-black text-xs"
+                              title="썸네일로 설정"
+                            >
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newImages = formData.images.filter((_, i) => i !== idx);
+                              const newThumbnailIndex = formData.thumbnailIndex >= newImages.length
+                                ? Math.max(0, newImages.length - 1)
+                                : formData.thumbnailIndex > idx
+                                  ? formData.thumbnailIndex - 1
+                                  : formData.thumbnailIndex;
+                              setFormData({ ...formData, images: newImages, thumbnailIndex: newThumbnailIndex });
+                            }}
+                            className="p-1.5 bg-red-500 rounded text-white text-xs"
+                            title="삭제"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        {formData.thumbnailIndex === idx && (
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-cyan-500 text-black text-[10px] font-medium rounded">
+                            썸네일
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 파일 업로드 버튼 */}
                 <input
-                  type="text"
-                  required
-                  value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-cyan-500"
-                  placeholder="/samples/product1.jpg"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={async (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+
+                    setIsUploading(true);
+                    const newImages: string[] = [];
+
+                    try {
+                      for (const file of Array.from(files)) {
+                        const formDataUpload = new FormData();
+                        formDataUpload.append('file', file);
+
+                        const res = await fetch('/api/upload', {
+                          method: 'POST',
+                          body: formDataUpload,
+                        });
+
+                        if (!res.ok) throw new Error('Upload failed');
+
+                        const data = await res.json();
+                        newImages.push(data.url);
+                      }
+
+                      setFormData(prev => ({
+                        ...prev,
+                        images: [...prev.images, ...newImages],
+                      }));
+                      showMessage('success', `${newImages.length}개 이미지 업로드 완료`);
+                    } catch (err) {
+                      console.error('Upload error:', err);
+                      showMessage('error', '이미지 업로드에 실패했습니다.');
+                    } finally {
+                      setIsUploading(false);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }
+                  }}
+                  className="hidden"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  이미지는 public/samples 폴더에 업로드 후 경로를 입력하세요.
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="w-full px-4 py-3 border-2 border-dashed border-gray-600 hover:border-cyan-500 rounded-lg transition-colors text-gray-400 hover:text-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      업로드 중...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      클릭하여 이미지 선택 (여러 장 가능)
+                    </span>
+                  )}
+                </button>
+                <p className="mt-2 text-xs text-gray-500">
+                  {formData.images.length === 0
+                    ? '최소 1개 이상의 이미지를 업로드하세요.'
+                    : `${formData.images.length}개 이미지 (첫 번째 이미지 클릭하여 썸네일 지정)`
+                  }
                 </p>
               </div>
 

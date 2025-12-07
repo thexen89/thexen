@@ -235,7 +235,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.src = item.product.image;
+      img.src = item.product.images[item.product.thumbnailIndex] || item.product.images[0];
       img.onload = () => {
         const offscreen = document.createElement('canvas');
         offscreen.width = size;

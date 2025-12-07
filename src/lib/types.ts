@@ -2,7 +2,8 @@ export interface Product {
   id: string;
   name: string;
   client: string;
-  image: string;
+  images: string[];
+  thumbnailIndex: number;
   description: string;
   priority: number;
   createdAt: string;

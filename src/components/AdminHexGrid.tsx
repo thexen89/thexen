@@ -327,7 +327,7 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
       if (!imagesRef.current.has(product.id)) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.src = product.image;
+        img.src = product.images[product.thumbnailIndex] || product.images[0];
         img.onload = () => {
           imagesRef.current.set(product.id, img);
           requestRender();

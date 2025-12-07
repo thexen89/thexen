@@ -25,7 +25,8 @@ export async function POST(request: Request) {
       data: {
         name: body.name,
         client: body.client,
-        image: body.image,
+        images: body.images || [],
+        thumbnailIndex: body.thumbnailIndex || 0,
         description: body.description,
         priority: body.priority || (maxPriority._max.priority || 0) + 1,
         shape: body.shape,
@@ -48,7 +49,8 @@ export async function PUT(request: Request) {
       data: {
         name: body.name,
         client: body.client,
-        image: body.image,
+        images: body.images,
+        thumbnailIndex: body.thumbnailIndex,
         description: body.description,
         priority: body.priority,
         shape: body.shape,

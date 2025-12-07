@@ -7,13 +7,14 @@ datasource db {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  client      String
-  image       String
-  description String
-  priority    Int
-  shape       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  client         String
+  images         String[]
+  thumbnailIndex Int      @default(0)
+  description    String
+  priority       Int
+  shape          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

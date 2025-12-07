@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Product } from '@/lib/types';
 
 interface ModalProps {
@@ -9,10 +9,16 @@ interface ModalProps {
 }
 
 export default function Modal({ product, onClose }: ModalProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+      } else if (e.key === 'ArrowLeft') {
+        goToPrev();
+      } else if (e.key === 'ArrowRight') {
+        goToNext();
       }
     },
     [onClose]
@@ -20,6 +26,7 @@ export default function Modal({ product, onClose }: ModalProps) {
 
   useEffect(() => {
     if (product) {
+      setCurrentIndex(0);
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
     }
@@ -31,6 +38,17 @@ export default function Modal({ product, onClose }: ModalProps) {
   }, [product, handleEscape]);
 
   if (!product) return null;
+
+  const images = product.images;
+  const hasMultipleImages = images.length > 1;
+
+  const goToPrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
 
   return (
     <div
@@ -66,11 +84,11 @@ export default function Modal({ product, onClose }: ModalProps) {
           </svg>
         </button>
 
-        {/* Image */}
+        {/* Image Carousel */}
         <div className="relative aspect-square bg-[#0f0f1a]">
           <img
-            src={product.image}
-            alt={product.name}
+            src={images[currentIndex]}
+            alt={`${product.name} - ${currentIndex + 1}`}
             className="w-full h-full object-cover"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -83,10 +101,71 @@ export default function Modal({ product, onClose }: ModalProps) {
             }}
           />
 
-          {/* Priority badge */}
-          <div className="absolute top-4 left-4 px-3 py-1 bg-[#00d4ff] text-black text-sm font-bold rounded-full">
-            #{product.priority}
-          </div>
+          {/* Navigation Arrows */}
+          {hasMultipleImages && (
+            <>
+              <button
+                onClick={goToPrev}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={goToNext}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {/* Dots Indicator */}
+          {hasMultipleImages && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentIndex(idx)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    idx === currentIndex ? 'bg-white' : 'bg-white/40'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Image Counter */}
+          {hasMultipleImages && (
+            <div className="absolute top-4 left-4 px-3 py-1 bg-black/50 text-white text-sm rounded-full">
+              {currentIndex + 1} / {images.length}
+            </div>
+          )}
         </div>
 
         {/* Content */}
