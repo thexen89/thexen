@@ -14,14 +14,20 @@ interface GridItem {
   baseY: number;
 }
 
-// 애플워치 스타일 허니컴 그리드 + 피쉬아이 렌즈 효과
-const BASE_SIZE = 85; // 기본 아이콘 크기 (더 크게)
-const ROWS = 21; // 충분한 행 수 (스크롤용)
-const COLS = 5; // 열 수 (3-4 패턴에 맞게)
-const FRICTION = 0.95;
-const MIN_VELOCITY = 0.1;
-const MAX_RADIUS = 220; // 피쉬아이 효과 반경 (더 넓게)
-const FISHEYE_STRENGTH = 0.5; // 피쉬아이 강도 (조금 약하게)
+// 애플워치 스타일 버블 UI 설정
+const CONFIG = {
+  maxSize: 76,       // 최대 크기
+  minSize: 36,       // 최소 크기
+  xRadius: 40,       // 가로 중앙 영역 (좁게)
+  yRadius: 80,       // 세로 중앙 영역 (넓게)
+  fringeWidth: 70,   // 페이드 영역 너비
+  gutter: 5,         // 아이콘 간격
+};
+
+const ROWS = 25; // 충분한 행 수 (스크롤용)
+const FRICTION = 0.92;
+const MIN_VELOCITY = 0.5;
+const X_SPRING_BACK = 0.85; // X축 스프링백 계수
 
 export default function MobileHexGrid({ products, onProductClick }: MobileHexGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -54,19 +60,18 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
 
     // 3-4-3-4 패턴 그리드 생성
     const positions: { baseX: number; baseY: number }[] = [];
-    const cellHeight = BASE_SIZE * 0.866; // 벌집 높이 비율
+    const baseSpacing = CONFIG.maxSize + CONFIG.gutter;
+    const verticalSpacing = baseSpacing * 0.85;
 
     for (let row = -Math.floor(ROWS / 2); row <= Math.floor(ROWS / 2); row++) {
-      const isEvenRow = Math.abs(row) % 2 === 0;
-      const colsInRow = isEvenRow ? 3 : 4; // 짝수행 3개, 홀수행 4개
-      const rowOffset = isEvenRow ? 0 : -BASE_SIZE * 0.5; // 홀수행은 왼쪽으로 반칸
+      const isOddRow = Math.abs(row) % 2 === 1;
+      const cols = isOddRow ? 4 : 3; // 홀수행 4개, 짝수행 3개
 
-      for (let col = 0; col < colsInRow; col++) {
-        // 중앙 정렬
-        const startX = -(colsInRow - 1) * BASE_SIZE / 2;
+      for (let col = 0; col < cols; col++) {
+        const colOffset = col - (cols - 1) / 2;
         positions.push({
-          baseX: startX + col * BASE_SIZE + rowOffset,
-          baseY: row * cellHeight,
+          baseX: colOffset * baseSpacing,
+          baseY: row * verticalSpacing,
         });
       }
     }
@@ -90,40 +95,59 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     return items;
   }, [products]);
 
-  // 피쉬아이 렌즈 효과 적용
-  const applyFisheye = useCallback((baseX: number, baseY: number, offsetX: number, offsetY: number, centerX: number, centerY: number) => {
-    const x = baseX + offsetX;
-    const y = baseY + offsetY;
+  // 버블 변환 계산 - 가로는 위치 고정, 크기만 변화
+  const calculateBubbleTransform = useCallback((baseX: number, baseY: number, offsetX: number, offsetY: number, centerX: number, centerY: number) => {
+    // X축은 위치 고정, Y축만 스크롤
+    const x = baseX; // 가로 위치는 고정
+    const y = baseY + offsetY; // 세로만 스크롤
 
-    const dx = x;
-    const dy = y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    // 가로 오프셋으로 크기 변화 계산 (위치 이동 없이)
+    const xInfluence = baseX + offsetX * 0.3; // 가로 드래그는 크기에만 약하게 영향
 
-    if (distance === 0) {
-      return {
-        screenX: centerX,
-        screenY: centerY,
-        scale: 1,
-        opacity: 1,
-      };
+    // 세로 거리 계산
+    const yDistance = Math.abs(y);
+    const yDistanceToMiddle = Math.max(0, yDistance - CONFIG.yRadius);
+
+    // 가로 거리 계산 (크기 변화용)
+    const xDistance = Math.abs(xInfluence);
+    const xDistanceToMiddle = Math.max(0, xDistance - CONFIG.xRadius);
+
+    // 전체 거리 (크기 계산용)
+    const totalDistanceToMiddle = Math.sqrt(
+      Math.pow(xDistanceToMiddle, 2) +
+      Math.pow(yDistanceToMiddle, 2)
+    );
+
+    let size: number;
+    let opacity: number;
+
+    if (totalDistanceToMiddle <= 0) {
+      size = CONFIG.maxSize;
+      opacity = 1;
+    } else if (totalDistanceToMiddle <= CONFIG.fringeWidth) {
+      const progress = totalDistanceToMiddle / CONFIG.fringeWidth;
+      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 0.8);
+      opacity = 1 - progress * 0.3;
+    } else {
+      const outerProgress = Math.min((totalDistanceToMiddle - CONFIG.fringeWidth) / 60, 1);
+      size = CONFIG.minSize * (1 - outerProgress * 0.3);
+      opacity = Math.max(0.7 - outerProgress * 0.6, 0.1);
     }
 
-    // 피쉬아이 왜곡
-    const normalizedDist = Math.min(distance / MAX_RADIUS, 1.5);
-    const distortion = Math.pow(normalizedDist, 1.5) * FISHEYE_STRENGTH;
-    const newDistance = distance * (1 + distortion);
+    // 컴팩트니스: 작아진 버블을 중앙으로 살짝 당김
+    let translateY = 0;
+    if (yDistanceToMiddle > 0) {
+      const pullStrength = Math.min(yDistanceToMiddle / CONFIG.fringeWidth, 1) * 15;
+      translateY = -Math.sign(y) * pullStrength;
+    }
 
-    const angle = Math.atan2(dy, dx);
-    const screenX = centerX + Math.cos(angle) * newDistance;
-    const screenY = centerY + Math.sin(angle) * newDistance;
-
-    // 스케일: 중앙에서 크고 가장자리에서 작음
-    const scale = Math.max(0.3, 1 - normalizedDist * 0.6);
-
-    // 투명도: 가장자리에서 페이드 아웃
-    const opacity = Math.max(0, 1 - Math.pow(normalizedDist, 2) * 0.8);
-
-    return { screenX, screenY, scale, opacity };
+    return {
+      screenX: centerX + x,
+      screenY: centerY + y + translateY,
+      size: Math.max(size, 20),
+      opacity,
+      scale: size / CONFIG.maxSize,
+    };
   }, []);
 
   // 렌더 함수
@@ -149,21 +173,19 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, w, h);
 
-      // 아이템 그리기 (피쉬아이 효과 적용)
-      // 먼저 스케일 작은 것부터 그려서 큰 것이 위에 오도록
+      // 아이템 그리기 (버블 효과 적용)
       const itemsWithTransform = gridItems.map((item) => {
-        const transformed = applyFisheye(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY);
+        const transformed = calculateBubbleTransform(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY);
         return { item, ...transformed };
       });
 
       // 스케일 작은 것부터 그리기 (큰 것이 위에)
-      itemsWithTransform.sort((a, b) => a.scale - b.scale);
+      itemsWithTransform.sort((a, b) => a.size - b.size);
 
-      itemsWithTransform.forEach(({ item, screenX, screenY, scale, opacity }) => {
+      itemsWithTransform.forEach(({ item, screenX, screenY, size, opacity, scale }) => {
         // 투명도가 너무 낮으면 그리지 않음
-        if (opacity < 0.05) return;
+        if (opacity < 0.08 || scale < 0.3) return;
 
-        const size = BASE_SIZE * scale;
         const radius = size / 2;
 
         // 화면 밖 체크
@@ -192,24 +214,33 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
 
         ctx.restore();
 
-        // 테두리 (투명도 적용)
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * opacity})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        // 그림자 효과 (큰 것만)
+        if (scale > 0.5) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 12 * scale;
+          ctx.shadowOffsetY = 4 * scale;
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+          ctx.strokeStyle = 'transparent';
+          ctx.stroke();
+          ctx.restore();
+        }
       });
 
       // 비네트 효과 (가장자리 어둡게)
-      const vignetteGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(w, h) * 0.6);
+      ctx.save();
+      const vignetteGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(w, h) * 0.55);
       vignetteGrad.addColorStop(0, 'transparent');
-      vignetteGrad.addColorStop(0.5, 'transparent');
-      vignetteGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.5)');
-      vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+      vignetteGrad.addColorStop(0.45, 'transparent');
+      vignetteGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.4)');
+      vignetteGrad.addColorStop(0.82, 'rgba(0, 0, 0, 0.8)');
+      vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
       ctx.fillStyle = vignetteGrad;
       ctx.fillRect(0, 0, w, h);
+      ctx.restore();
     };
-  }, [gridItems, dimensions, dpr, applyFisheye]);
+  }, [gridItems, dimensions, dpr, calculateBubbleTransform]);
 
   const requestRender = useCallback(() => {
     if (renderRequestRef.current) return;
@@ -219,20 +250,26 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     });
   }, []);
 
-  // 관성 스크롤 (X, Y 모두)
+  // 관성 스크롤 (Y축) + X축 스프링백
   const animateInertia = useCallback(() => {
-    const vx = velocityRef.current.x;
     const vy = velocityRef.current.y;
 
-    if (Math.abs(vx) < MIN_VELOCITY && Math.abs(vy) < MIN_VELOCITY) {
+    // X축 스프링백 (원점으로 복귀)
+    const newX = offsetRef.current.x * X_SPRING_BACK;
+    if (Math.abs(newX) < 1) {
+      offsetRef.current.x = 0;
+    } else {
+      offsetRef.current.x = newX;
+    }
+
+    // Y축 관성 스크롤
+    if (Math.abs(vy) < MIN_VELOCITY && Math.abs(offsetRef.current.x) < 1) {
       velocityRef.current = { x: 0, y: 0 };
       animationRef.current = null;
       return;
     }
 
-    offsetRef.current.x += vx;
     offsetRef.current.y += vy;
-    velocityRef.current.x *= FRICTION;
     velocityRef.current.y *= FRICTION;
 
     requestRender();
@@ -241,7 +278,7 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
 
   // 이미지 로드
   useEffect(() => {
-    const size = BASE_SIZE * 2; // 고해상도용
+    const size = CONFIG.maxSize * 2; // 고해상도용
     products.forEach((product) => {
       if (!imagesRef.current.has(product.id)) {
         const img = new Image();
@@ -303,7 +340,7 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     requestRender();
   }, [gridItems, dimensions, requestRender]);
 
-  // 아이템 찾기 (피쉬아이 변환된 위치 기준)
+  // 아이템 찾기 (버블 변환된 위치 기준)
   const findItemAtPosition = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -319,14 +356,13 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
 
     // 스케일 큰 것부터 검사 (위에 그려진 것이 우선)
     const itemsWithTransform = gridItems.map((item) => {
-      const transformed = applyFisheye(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY);
+      const transformed = calculateBubbleTransform(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY);
       return { item, ...transformed };
-    }).sort((a, b) => b.scale - a.scale);
+    }).sort((a, b) => b.size - a.size);
 
-    for (const { item, screenX, screenY, scale, opacity } of itemsWithTransform) {
-      if (opacity < 0.05) continue;
+    for (const { item, screenX, screenY, size, opacity, scale } of itemsWithTransform) {
+      if (opacity < 0.08 || scale < 0.3) continue;
 
-      const size = BASE_SIZE * scale;
       const radius = size / 2;
       const dist = Math.sqrt((touchX - screenX) ** 2 + (touchY - screenY) ** 2);
 
@@ -336,7 +372,7 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     }
 
     return null;
-  }, [dimensions, gridItems, applyFisheye]);
+  }, [dimensions, gridItems, calculateBubbleTransform]);
 
   // 터치 핸들러
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -369,13 +405,15 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
       const dx = touch.clientX - lastTouchRef.current.x;
       const dy = touch.clientY - lastTouchRef.current.y;
 
-      offsetRef.current.x += dx;
+      // X축은 제한적으로 이동 (크기 변화용)
+      offsetRef.current.x = Math.max(-100, Math.min(100, offsetRef.current.x + dx));
+      // Y축은 자유롭게 스크롤
       offsetRef.current.y += dy;
 
       const now = Date.now();
       const dt = now - lastMoveTimeRef.current;
       if (dt > 0) {
-        velocityRef.current.x = dx / dt * 16;
+        velocityRef.current.x = 0; // X축 속도는 무시
         velocityRef.current.y = dy / dt * 16;
       }
       lastMoveTimeRef.current = now;
@@ -401,8 +439,8 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
           onProductClick(item.product);
         }
       } else {
-        const speed = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.y ** 2);
-        if (speed > MIN_VELOCITY) {
+        // Y축 속도가 있거나, X축이 원점이 아니면 애니메이션 시작
+        if (Math.abs(velocityRef.current.y) > MIN_VELOCITY || Math.abs(offsetRef.current.x) > 1) {
           animationRef.current = requestAnimationFrame(animateInertia);
         }
       }
@@ -429,13 +467,15 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     const dx = e.clientX - lastTouchRef.current.x;
     const dy = e.clientY - lastTouchRef.current.y;
 
-    offsetRef.current.x += dx;
+    // X축은 제한적으로 이동 (크기 변화용)
+    offsetRef.current.x = Math.max(-100, Math.min(100, offsetRef.current.x + dx));
+    // Y축은 자유롭게 스크롤
     offsetRef.current.y += dy;
 
     const now = Date.now();
     const dt = now - lastMoveTimeRef.current;
     if (dt > 0) {
-      velocityRef.current.x = dx / dt * 16;
+      velocityRef.current.x = 0; // X축 속도는 무시
       velocityRef.current.y = dy / dt * 16;
     }
     lastMoveTimeRef.current = now;
@@ -459,8 +499,8 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
         onProductClick(item.product);
       }
     } else {
-      const speed = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.y ** 2);
-      if (speed > MIN_VELOCITY) {
+      // Y축 속도가 있거나, X축이 원점이 아니면 애니메이션 시작
+      if (Math.abs(velocityRef.current.y) > MIN_VELOCITY || Math.abs(offsetRef.current.x) > 1) {
         animationRef.current = requestAnimationFrame(animateInertia);
       }
     }
@@ -469,8 +509,8 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
   const handleMouseLeave = () => {
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
-      const speed = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.y ** 2);
-      if (speed > MIN_VELOCITY) {
+      // Y축 속도가 있거나, X축이 원점이 아니면 애니메이션 시작
+      if (Math.abs(velocityRef.current.y) > MIN_VELOCITY || Math.abs(offsetRef.current.x) > 1) {
         animationRef.current = requestAnimationFrame(animateInertia);
       }
     }
