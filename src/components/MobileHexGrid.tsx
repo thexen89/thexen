@@ -3,9 +3,15 @@
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { Product } from '@/lib/types';
 
+interface ClickPosition {
+  x: number;
+  y: number;
+  size: number;
+}
+
 interface MobileHexGridProps {
   products: Product[];
-  onProductClick: (product: Product) => void;
+  onProductClick: (product: Product, position?: ClickPosition) => void;
 }
 
 interface GridItem {
@@ -340,8 +346,8 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     requestRender();
   }, [gridItems, dimensions, requestRender]);
 
-  // 아이템 찾기 (버블 변환된 위치 기준)
-  const findItemAtPosition = useCallback((clientX: number, clientY: number) => {
+  // 아이템 찾기 (버블 변환된 위치 기준, 클릭 위치와 크기 정보 포함)
+  const findItemAtPosition = useCallback((clientX: number, clientY: number): { item: GridItem; position: ClickPosition } | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
@@ -367,7 +373,14 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
       const dist = Math.sqrt((touchX - screenX) ** 2 + (touchY - screenY) ** 2);
 
       if (dist < radius) {
-        return item;
+        return {
+          item,
+          position: {
+            x: screenX,
+            y: screenY,
+            size,
+          },
+        };
       }
     }
 
@@ -434,9 +447,9 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
       const duration = Date.now() - touchStartRef.current.time;
 
       if (distance < 15 && duration < 300) {
-        const item = findItemAtPosition(touch.clientX, touch.clientY);
-        if (item) {
-          onProductClick(item.product);
+        const result = findItemAtPosition(touch.clientX, touch.clientY);
+        if (result) {
+          onProductClick(result.item.product, result.position);
         }
       } else {
         // Y축 속도가 있거나, X축이 원점이 아니면 애니메이션 시작
@@ -494,9 +507,9 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     const duration = Date.now() - touchStartRef.current.time;
 
     if (distance < 15 && duration < 300) {
-      const item = findItemAtPosition(e.clientX, e.clientY);
-      if (item) {
-        onProductClick(item.product);
+      const result = findItemAtPosition(e.clientX, e.clientY);
+      if (result) {
+        onProductClick(result.item.product, result.position);
       }
     } else {
       // Y축 속도가 있거나, X축이 원점이 아니면 애니메이션 시작

@@ -1,71 +1,143 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { Product } from '@/lib/types';
 
 interface ModalProps {
   product: Product | null;
   onClose: () => void;
+  originPosition?: { x: number; y: number; size: number } | null;
 }
 
-export default function Modal({ product, onClose }: ModalProps) {
+// 유튜브/비메오 URL 감지
+const getVideoEmbed = (url: string): { type: 'youtube' | 'vimeo'; id: string } | null => {
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return { type: 'youtube', id: ytMatch[1] };
+
+  // Vimeo
+  const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/);
+  if (vimeoMatch) return { type: 'vimeo', id: vimeoMatch[1] };
+
+  return null;
+};
+
+export default function Modal({ product, onClose, originPosition }: ModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [animationState, setAnimationState] = useState<'entering' | 'visible' | 'exiting'>('entering');
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const handleClose = useCallback(() => {
+    setAnimationState('exiting');
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  }, [onClose]);
+
+  const goToPrev = useCallback(() => {
+    if (!product) return;
+    setCurrentIndex((prev) => (prev === 0 ? product.images.length - 1 : prev - 1));
+  }, [product]);
+
+  const goToNext = useCallback(() => {
+    if (!product) return;
+    setCurrentIndex((prev) => (prev === product.images.length - 1 ? 0 : prev + 1));
+  }, [product]);
 
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
       } else if (e.key === 'ArrowLeft') {
         goToPrev();
       } else if (e.key === 'ArrowRight') {
         goToNext();
       }
     },
-    [onClose]
+    [handleClose, goToPrev, goToNext]
   );
 
   useEffect(() => {
     if (product) {
       setCurrentIndex(0);
+      setAnimationState('entering');
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
-    }
 
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
-    };
+      // 진입 애니메이션 완료
+      const timer = setTimeout(() => {
+        setAnimationState('visible');
+      }, 300);
+
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('keydown', handleEscape);
+        document.body.style.overflow = '';
+      };
+    }
   }, [product, handleEscape]);
 
   if (!product) return null;
 
   const images = product.images;
   const hasMultipleImages = images.length > 1;
+  const currentMedia = images[currentIndex];
+  const videoEmbed = getVideoEmbed(currentMedia);
 
-  const goToPrev = () => {
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
+  // 애니메이션 스타일 계산
+  const getAnimationStyle = () => {
+    if (!originPosition) {
+      // originPosition이 없으면 기본 애니메이션
+      return {};
+    }
 
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    if (animationState === 'entering') {
+      return {
+        transform: `translate(${originPosition.x - window.innerWidth / 2}px, ${originPosition.y - window.innerHeight / 2}px) scale(0.1)`,
+        opacity: 0,
+        borderRadius: '50%',
+      };
+    }
+
+    if (animationState === 'exiting') {
+      return {
+        transform: `translate(${originPosition.x - window.innerWidth / 2}px, ${originPosition.y - window.innerHeight / 2}px) scale(0.1)`,
+        opacity: 0,
+        borderRadius: '50%',
+      };
+    }
+
+    return {
+      transform: 'translate(0, 0) scale(1)',
+      opacity: 1,
+      borderRadius: '1rem',
+    };
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
+        animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
+      }`}
+      onClick={handleClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div
+        className={`absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
+          animationState === 'entering' ? 'opacity-0' : animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
+        }`}
+      />
 
       {/* Modal */}
       <div
-        className="relative bg-[#1a1a2e] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-modal-in"
+        ref={modalRef}
+        className="relative bg-[#1a1a2e] max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl transition-all duration-300 ease-out"
+        style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
         >
           <svg
@@ -84,29 +156,44 @@ export default function Modal({ product, onClose }: ModalProps) {
           </svg>
         </button>
 
-        {/* Image Carousel */}
-        <div className="relative aspect-square bg-[#0f0f1a]">
-          <img
-            src={images[currentIndex]}
-            alt={`${product.name} - ${currentIndex + 1}`}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = `data:image/svg+xml,${encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-                  <rect fill="#1a1a2e" width="400" height="400"/>
-                  <text fill="#4a4a6a" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="200">${product.name}</text>
-                </svg>
-              `)}`;
-            }}
-          />
+        {/* Image/Video Carousel */}
+        <div className="relative aspect-video bg-[#0f0f1a] flex items-center justify-center">
+          {videoEmbed ? (
+            // 동영상 재생
+            <iframe
+              src={
+                videoEmbed.type === 'youtube'
+                  ? `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1`
+                  : `https://player.vimeo.com/video/${videoEmbed.id}?autoplay=1`
+              }
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            // 이미지 (contain 모드)
+            <img
+              src={currentMedia}
+              alt={`${product.name} - ${currentIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = `data:image/svg+xml,${encodeURIComponent(`
+                  <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+                    <rect fill="#1a1a2e" width="400" height="300"/>
+                    <text fill="#4a4a6a" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="150">${product.name}</text>
+                  </svg>
+                `)}`;
+              }}
+            />
+          )}
 
           {/* Navigation Arrows */}
           {hasMultipleImages && (
             <>
               <button
                 onClick={goToPrev}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -125,7 +212,7 @@ export default function Modal({ product, onClose }: ModalProps) {
               </button>
               <button
                 onClick={goToNext}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -152,8 +239,8 @@ export default function Modal({ product, onClose }: ModalProps) {
                 <button
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    idx === currentIndex ? 'bg-white' : 'bg-white/40'
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                    idx === currentIndex ? 'bg-white' : 'bg-white/40 hover:bg-white/60'
                   }`}
                 />
               ))}
@@ -162,7 +249,7 @@ export default function Modal({ product, onClose }: ModalProps) {
 
           {/* Image Counter */}
           {hasMultipleImages && (
-            <div className="absolute top-4 left-4 px-3 py-1 bg-black/50 text-white text-sm rounded-full">
+            <div className="absolute top-4 left-4 px-3 py-1.5 bg-black/50 text-white text-sm rounded-full">
               {currentIndex + 1} / {images.length}
             </div>
           )}
@@ -179,32 +266,17 @@ export default function Modal({ product, onClose }: ModalProps) {
             </div>
           </div>
 
-          <p className="text-gray-300 leading-relaxed mb-6">
-            {product.description}
-          </p>
+          {product.description && (
+            <p className="text-gray-300 leading-relaxed mb-6">
+              {product.description}
+            </p>
+          )}
 
           <div className="flex items-center gap-4 text-sm text-gray-500">
             <span>등록일: {product.createdAt}</span>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes modal-in {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-
-        .animate-modal-in {
-          animation: modal-in 0.2s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
