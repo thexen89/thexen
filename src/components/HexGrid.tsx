@@ -20,13 +20,14 @@ interface GridItem {
   baseY: number;
 }
 
-// 애플워치 스타일 버블 UI 설정 (PC 버전 - 더 큰 크기)
+// PC 버전 설정 - 모바일과 동일한 구조, 크기만 다름
 const CONFIG = {
-  maxSize: 180,      // 최대 크기 (PC는 훨씬 크게)
-  minSize: 70,       // 최소 크기
-  focusRadius: 150,  // 마우스 중심 영역 (최대 크기 유지)
-  fringeWidth: 250,  // 페이드 영역 너비
-  gutter: 10,        // 아이콘 간격
+  maxSize: 140,
+  minSize: 60,
+  xRadius: 80,
+  yRadius: 150,
+  fringeWidth: 120,
+  gutter: 10,
 };
 
 const ROWS = 15;
@@ -44,23 +45,15 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [dpr, setDpr] = useState(1);
 
-  // 스크롤 오프셋 (Y축만)
   const offsetRef = useRef({ y: 0 });
-  // 마우스 위치 (화면 좌표)
-  const mouseRef = useRef({ x: 0, y: 0 });
-  // 드래그 상태
   const isDraggingRef = useRef(false);
   const lastTouchRef = useRef({ x: 0, y: 0 });
-  // 관성 스크롤
   const velocityRef = useRef(0);
   const lastMoveTimeRef = useRef(0);
   const animationRef = useRef<number | null>(null);
-  // 터치 시작 위치
   const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
-  // 호버 상태
-  const hoveredRef = useRef<GridItem | null>(null);
 
-  // 허니컴 그리드 좌표 생성
+  // 그리드 생성
   const gridItems = useMemo(() => {
     const items: GridItem[] = [];
     const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
@@ -85,7 +78,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       }
     }
 
-    // 중앙에서 가까운 순으로 정렬
     positions.sort((a, b) => {
       const distA = Math.sqrt(a.baseX ** 2 + a.baseY ** 2);
       const distB = Math.sqrt(b.baseX ** 2 + b.baseY ** 2);
@@ -103,49 +95,48 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     return items;
   }, [products]);
 
-  // 마우스 커서 위치 기반 버블 변환 계산
-  const calculateBubbleTransform = useCallback((
-    baseX: number,
-    baseY: number,
-    offsetY: number,
-    centerX: number,
-    centerY: number,
-    mouseX: number,
-    mouseY: number
-  ) => {
-    // 화면 좌표
-    const screenX = centerX + baseX;
-    const screenY = centerY + baseY + offsetY;
+  // 버블 변환 - 모바일과 동일한 로직
+  const calculateBubbleTransform = useCallback((baseX: number, baseY: number, offsetY: number, centerX: number, centerY: number) => {
+    const x = baseX;
+    const y = baseY + offsetY;
 
-    // 마우스와의 거리 계산
-    const dx = screenX - mouseX;
-    const dy = screenY - mouseY;
-    const distanceFromMouse = Math.sqrt(dx * dx + dy * dy);
+    const yDistance = Math.abs(y);
+    const yDistanceToMiddle = Math.max(0, yDistance - CONFIG.yRadius);
+
+    const xDistance = Math.abs(x);
+    const xDistanceToMiddle = Math.max(0, xDistance - CONFIG.xRadius);
+
+    const totalDistanceToMiddle = Math.sqrt(
+      Math.pow(xDistanceToMiddle, 2) +
+      Math.pow(yDistanceToMiddle, 2)
+    );
 
     let size: number;
     let opacity: number;
 
-    if (distanceFromMouse <= CONFIG.focusRadius) {
-      // 마우스 근처: 최대 크기
+    if (totalDistanceToMiddle <= 0) {
       size = CONFIG.maxSize;
       opacity = 1;
-    } else if (distanceFromMouse <= CONFIG.focusRadius + CONFIG.fringeWidth) {
-      // 페이드 영역: 점진적 축소
-      const progress = (distanceFromMouse - CONFIG.focusRadius) / CONFIG.fringeWidth;
-      const eased = Math.pow(progress, 0.6);
-      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * eased;
-      opacity = 1 - progress * 0.4;
+    } else if (totalDistanceToMiddle <= CONFIG.fringeWidth) {
+      const progress = totalDistanceToMiddle / CONFIG.fringeWidth;
+      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 0.8);
+      opacity = 1 - progress * 0.3;
     } else {
-      // 멀리 있음: 최소 크기
-      const outerProgress = Math.min((distanceFromMouse - CONFIG.focusRadius - CONFIG.fringeWidth) / 100, 1);
-      size = CONFIG.minSize * (1 - outerProgress * 0.2);
-      opacity = Math.max(0.6 - outerProgress * 0.4, 0.2);
+      const outerProgress = Math.min((totalDistanceToMiddle - CONFIG.fringeWidth) / 60, 1);
+      size = CONFIG.minSize * (1 - outerProgress * 0.3);
+      opacity = Math.max(0.7 - outerProgress * 0.6, 0.1);
+    }
+
+    let translateY = 0;
+    if (yDistanceToMiddle > 0) {
+      const pullStrength = Math.min(yDistanceToMiddle / CONFIG.fringeWidth, 1) * 15;
+      translateY = -Math.sign(y) * pullStrength;
     }
 
     return {
-      screenX,
-      screenY,
-      size: Math.max(size, 40),
+      screenX: centerX + x,
+      screenY: centerY + y + translateY,
+      size: Math.max(size, 20),
       opacity,
       scale: size / CONFIG.maxSize,
     };
@@ -167,112 +158,57 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       const centerX = w / 2;
       const centerY = h / 2;
       const offsetY = offsetRef.current.y;
-      const mouse = mouseRef.current;
-      const hovered = hoveredRef.current;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // 배경
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, w, h);
 
-      // 아이템 그리기 (버블 효과 적용)
       const itemsWithTransform = gridItems.map((item) => {
-        const transformed = calculateBubbleTransform(
-          item.baseX, item.baseY, offsetY, centerX, centerY, mouse.x, mouse.y
-        );
+        const transformed = calculateBubbleTransform(item.baseX, item.baseY, offsetY, centerX, centerY);
         return { item, ...transformed };
       });
 
-      // 스케일 작은 것부터 그리기 (큰 것이 위에)
       itemsWithTransform.sort((a, b) => a.size - b.size);
 
-      itemsWithTransform.forEach(({ item, screenX, screenY, size, opacity, scale }) => {
-        if (opacity < 0.1 || scale < 0.3) return;
+      for (const { item, screenX, screenY, size, opacity, scale } of itemsWithTransform) {
+        if (opacity < 0.08 || scale < 0.3) continue;
 
-        const isHovered = hovered?.product.id === item.product.id;
-        const radius = isHovered ? size / 2 * 1.08 : size / 2;
+        const radius = size / 2;
 
-        // 화면 밖 체크
         if (screenX < -radius || screenX > w + radius ||
             screenY < -radius || screenY > h + radius) {
-          return;
+          continue;
         }
 
         ctx.save();
         ctx.globalAlpha = opacity;
 
-        // 호버 시 글로우 효과
-        if (isHovered) {
-          ctx.shadowColor = '#00d4ff';
-          ctx.shadowBlur = 25;
-        }
-
-        // 원 배경
         ctx.beginPath();
         ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
         ctx.fillStyle = '#1a1a2e';
         ctx.fill();
 
-        // 이미지
         const img = imagesRef.current.get(item.product.id);
         if (img?.complete) {
           ctx.beginPath();
           ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
           ctx.clip();
-          ctx.drawImage(img, screenX - radius, screenY - radius, radius * 2, radius * 2);
+          ctx.drawImage(img, screenX - radius, screenY - radius, size, size);
         }
 
         ctx.restore();
+      }
 
-        // 호버 시 테두리
-        if (isHovered) {
-          ctx.save();
-          ctx.globalAlpha = opacity;
-          ctx.beginPath();
-          ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
-          ctx.strokeStyle = '#00d4ff';
-          ctx.lineWidth = 3;
-          ctx.stroke();
-          ctx.restore();
-
-          // 라벨
-          const labelY = screenY + radius + 20;
-          ctx.save();
-          ctx.globalAlpha = 1;
-          ctx.font = 'bold 13px "Pretendard", sans-serif';
-          const textWidth = ctx.measureText(item.product.name).width;
-          const labelWidth = Math.max(textWidth + 24, 90);
-          const labelHeight = 42;
-
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-          ctx.beginPath();
-          ctx.roundRect(screenX - labelWidth / 2, labelY - labelHeight / 2, labelWidth, labelHeight, 8);
-          ctx.fill();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(item.product.name, screenX, labelY - 6);
-
-          ctx.fillStyle = '#00d4ff';
-          ctx.font = '11px "Pretendard", sans-serif';
-          ctx.fillText(item.product.client, screenX, labelY + 10);
-          ctx.restore();
-        }
-      });
-
-      // 비네트 효과 (가장자리 어둡게)
-      ctx.save();
-      const vignetteGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(w, h) * 0.65);
+      // 비네트 효과
+      const vignetteGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(w, h) * 0.6);
       vignetteGrad.addColorStop(0, 'transparent');
-      vignetteGrad.addColorStop(0.6, 'transparent');
-      vignetteGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.3)');
-      vignetteGrad.addColorStop(0.95, 'rgba(0, 0, 0, 0.7)');
-      vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+      vignetteGrad.addColorStop(0.5, 'transparent');
+      vignetteGrad.addColorStop(0.75, 'rgba(0, 0, 0, 0.4)');
+      vignetteGrad.addColorStop(0.9, 'rgba(0, 0, 0, 0.8)');
+      vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
       ctx.fillStyle = vignetteGrad;
       ctx.fillRect(0, 0, w, h);
-      ctx.restore();
     };
   }, [gridItems, dimensions, dpr, calculateBubbleTransform]);
 
@@ -284,7 +220,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     });
   }, []);
 
-  // 관성 스크롤 (Y축)
+  // 관성 스크롤
   const animateInertia = useCallback(() => {
     const vy = velocityRef.current;
 
@@ -359,8 +295,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     canvas.style.width = `${dimensions.width}px`;
     canvas.style.height = `${dimensions.height}px`;
 
-    // 초기 마우스 위치를 화면 중앙으로 설정
-    mouseRef.current = { x: dimensions.width / 2, y: dimensions.height / 2 };
     requestRender();
   }, [dimensions, dpr, requestRender]);
 
@@ -368,7 +302,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     requestRender();
   }, [gridItems, dimensions, requestRender]);
 
-  // 아이템 찾기 (클릭 위치와 크기 정보 포함)
+  // 아이템 찾기
   const findItemAtPosition = useCallback((clientX: number, clientY: number): { item: GridItem; position: ClickPosition } | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -381,17 +315,14 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     const centerX = w / 2;
     const centerY = h / 2;
     const offsetY = offsetRef.current.y;
-    const mouse = mouseRef.current;
 
     const itemsWithTransform = gridItems.map((item) => {
-      const transformed = calculateBubbleTransform(
-        item.baseX, item.baseY, offsetY, centerX, centerY, mouse.x, mouse.y
-      );
+      const transformed = calculateBubbleTransform(item.baseX, item.baseY, offsetY, centerX, centerY);
       return { item, ...transformed };
     }).sort((a, b) => b.size - a.size);
 
     for (const { item, screenX, screenY, size, opacity, scale } of itemsWithTransform) {
-      if (opacity < 0.1 || scale < 0.3) continue;
+      if (opacity < 0.08 || scale < 0.3) continue;
 
       const radius = size / 2;
       const dist = Math.sqrt((touchX - screenX) ** 2 + (touchY - screenY) ** 2);
@@ -400,8 +331,8 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         return {
           item,
           position: {
-            x: screenX,
-            y: screenY,
+            x: rect.left + screenX,
+            y: rect.top + screenY,
             size,
           },
         };
@@ -411,7 +342,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     return null;
   }, [dimensions, gridItems, calculateBubbleTransform]);
 
-  // 마우스 이벤트
+  // 마우스 이벤트 - 모바일과 동일하게
   const handleMouseDown = (e: React.MouseEvent) => {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
@@ -426,24 +357,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    // 마우스 위치 업데이트 (항상)
-    mouseRef.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-
-    // 호버 감지
-    if (!isDraggingRef.current) {
-      const result = findItemAtPosition(e.clientX, e.clientY);
-      if (result?.item.product.id !== hoveredRef.current?.product.id) {
-        hoveredRef.current = result?.item || null;
-      }
-      requestRender();
-      return;
-    }
+    if (!isDraggingRef.current) return; // 드래그 중이 아니면 아무것도 안 함
 
     const dy = e.clientY - lastTouchRef.current.y;
     offsetRef.current.y += dy;
@@ -481,11 +395,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   };
 
   const handleMouseLeave = () => {
-    hoveredRef.current = null;
-    // 마우스가 나가면 중앙으로 리셋
-    mouseRef.current = { x: dimensions.width / 2, y: dimensions.height / 2 };
-    requestRender();
-
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
       if (Math.abs(velocityRef.current) > MIN_VELOCITY) {
@@ -494,33 +403,40 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     }
   };
 
-  // 휠 스크롤 지원
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+  // 휠 스크롤
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
-    }
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
 
-    offsetRef.current.y -= e.deltaY;
-    requestRender();
-  };
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+
+      offsetRef.current.y -= e.deltaY;
+      requestRender();
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, [requestRender]);
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden bg-black">
       <canvas
         ref={canvasRef}
-        className="cursor-pointer"
+        className="cursor-grab active:cursor-grabbing"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
       />
 
       <div className="absolute bottom-6 left-6 text-white/40 text-sm">
-        <p>마우스 이동: 포커스 | 스크롤: 탐색 | 클릭: 상세보기</p>
+        <p>드래그: 탐색 | 클릭: 상세보기</p>
       </div>
     </div>
   );
