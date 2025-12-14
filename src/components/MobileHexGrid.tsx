@@ -234,17 +234,13 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
         }
       });
 
-      // 비네트 효과 (가장자리 어둡게)
-      ctx.save();
-      const vignetteGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(w, h) * 0.55);
-      vignetteGrad.addColorStop(0, 'transparent');
-      vignetteGrad.addColorStop(0.45, 'transparent');
-      vignetteGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.4)');
-      vignetteGrad.addColorStop(0.82, 'rgba(0, 0, 0, 0.8)');
-      vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
-      ctx.fillStyle = vignetteGrad;
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
+      // 원형 테두리 밖만 완전히 검은색으로 마스킹 (안쪽은 100% 선명)
+      const maskRadius = Math.min(w, h) * 0.48;
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.rect(0, 0, w, h);
+      ctx.arc(centerX, centerY, maskRadius, 0, Math.PI * 2, true);
+      ctx.fill();
     };
   }, [gridItems, dimensions, dpr, calculateBubbleTransform]);
 
@@ -410,31 +406,7 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     }
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-
-    if (e.touches.length === 1 && isDraggingRef.current) {
-      const touch = e.touches[0];
-      const dx = touch.clientX - lastTouchRef.current.x;
-      const dy = touch.clientY - lastTouchRef.current.y;
-
-      // X축은 제한적으로 이동 (크기 변화용)
-      offsetRef.current.x = Math.max(-100, Math.min(100, offsetRef.current.x + dx));
-      // Y축은 자유롭게 스크롤
-      offsetRef.current.y += dy;
-
-      const now = Date.now();
-      const dt = now - lastMoveTimeRef.current;
-      if (dt > 0) {
-        velocityRef.current.x = 0; // X축 속도는 무시
-        velocityRef.current.y = dy / dt * 16;
-      }
-      lastMoveTimeRef.current = now;
-      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
-
-      requestRender();
-    }
-  };
+  // 터치 이벤트는 useEffect에서 non-passive로 등록
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (e.touches.length === 0) {
@@ -529,13 +501,45 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     }
   };
 
+  // 터치 이벤트를 non-passive로 등록
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+
+      if (e.touches.length === 1 && isDraggingRef.current) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - lastTouchRef.current.x;
+        const dy = touch.clientY - lastTouchRef.current.y;
+
+        offsetRef.current.x = Math.max(-100, Math.min(100, offsetRef.current.x + dx));
+        offsetRef.current.y += dy;
+
+        const now = Date.now();
+        const dt = now - lastMoveTimeRef.current;
+        if (dt > 0) {
+          velocityRef.current.x = 0;
+          velocityRef.current.y = dy / dt * 16;
+        }
+        lastMoveTimeRef.current = now;
+        lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+
+        requestRender();
+      }
+    };
+
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => canvas.removeEventListener('touchmove', handleTouchMove);
+  }, [requestRender]);
+
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden bg-black touch-none">
       <canvas
         ref={canvasRef}
         className="cursor-grab active:cursor-grabbing"
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

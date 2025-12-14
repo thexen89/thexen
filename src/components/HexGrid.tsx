@@ -22,15 +22,15 @@ interface GridItem {
 
 // PC 버전 설정 - 모바일과 동일한 구조, 크기만 다름
 const CONFIG = {
-  maxSize: 140,
-  minSize: 60,
-  xRadius: 80,
-  yRadius: 150,
-  fringeWidth: 120,
-  gutter: 10,
+  maxSize: 120,    // 140 → 120 (성능 최적화)
+  minSize: 50,     // 60 → 50
+  xRadius: 70,
+  yRadius: 130,
+  fringeWidth: 100,
+  gutter: 8,
 };
 
-const ROWS = 15;
+const ROWS = 11;   // 15 → 11 (렌더링할 아이템 수 감소)
 const COLS_ODD = 5;
 const COLS_EVEN = 4;
 const FRICTION = 0.94;
@@ -200,15 +200,13 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         ctx.restore();
       }
 
-      // 비네트 효과
-      const vignetteGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(w, h) * 0.6);
-      vignetteGrad.addColorStop(0, 'transparent');
-      vignetteGrad.addColorStop(0.5, 'transparent');
-      vignetteGrad.addColorStop(0.75, 'rgba(0, 0, 0, 0.4)');
-      vignetteGrad.addColorStop(0.9, 'rgba(0, 0, 0, 0.8)');
-      vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
-      ctx.fillStyle = vignetteGrad;
-      ctx.fillRect(0, 0, w, h);
+      // 원형 테두리 밖만 완전히 검은색으로 마스킹 (안쪽은 100% 선명)
+      const maskRadius = Math.min(w, h) * 0.46;
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.rect(0, 0, w, h);
+      ctx.arc(centerX, centerY, maskRadius, 0, Math.PI * 2, true);
+      ctx.fill();
     };
   }, [gridItems, dimensions, dpr, calculateBubbleTransform]);
 
@@ -271,7 +269,8 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        const pixelRatio = window.devicePixelRatio || 1;
+        // PC에서 DPR을 최대 2로 제한 (4K 모니터 등에서 성능 최적화)
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
         setDpr(pixelRatio);
         setDimensions({
           width: containerRef.current.clientWidth,
