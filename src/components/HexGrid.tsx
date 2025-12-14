@@ -74,7 +74,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       ref={containerRef}
       className="w-full h-full overflow-y-auto bg-black"
     >
-      <div className="relative py-6 px-2">
+      <div className="relative py-6 px-8">
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}
