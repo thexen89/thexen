@@ -3,47 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Product } from '@/lib/types';
 import AdminHexGrid from '@/components/AdminHexGrid';
-
-export type BackgroundTheme =
-  | 'dark' | 'darker' | 'checkerboard' | 'dots' | 'gradient'
-  | 'spring' | 'summer' | 'autumn' | 'winter'
-  | 'ocean' | 'sunset' | 'forest' | 'galaxy'
-  | 'minimal' | 'neon' | 'pastel';
-
-interface ThemeOption {
-  id: BackgroundTheme;
-  name: string;
-  category: string;
-}
-
-const BACKGROUND_THEMES: ThemeOption[] = [
-  // 기본
-  { id: 'dark', name: '다크', category: '기본' },
-  { id: 'darker', name: '블랙', category: '기본' },
-  { id: 'checkerboard', name: '체크무늬', category: '기본' },
-  { id: 'dots', name: '도트', category: '기본' },
-  { id: 'gradient', name: '그라디언트', category: '기본' },
-  { id: 'minimal', name: '미니멀', category: '기본' },
-  // 계절
-  { id: 'spring', name: '봄 - 벚꽃', category: '계절' },
-  { id: 'summer', name: '여름 - 바다', category: '계절' },
-  { id: 'autumn', name: '가을 - 단풍', category: '계절' },
-  { id: 'winter', name: '겨울 - 눈', category: '계절' },
-  // 자연
-  { id: 'ocean', name: '오션', category: '자연' },
-  { id: 'sunset', name: '선셋', category: '자연' },
-  { id: 'forest', name: '포레스트', category: '자연' },
-  { id: 'galaxy', name: '갤럭시', category: '자연' },
-  // 스타일
-  { id: 'neon', name: '네온', category: '스타일' },
-  { id: 'pastel', name: '파스텔', category: '스타일' },
-];
-
-const THEME_CATEGORIES = ['기본', '계절', '자연', '스타일'];
-
-const getThemeName = (themeId: BackgroundTheme): string => {
-  return BACKGROUND_THEMES.find(t => t.id === themeId)?.name || themeId;
-};
+import AdminMobileHexGrid from '@/components/AdminMobileHexGrid';
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -54,10 +14,19 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [bgTheme, setBgTheme] = useState<BackgroundTheme>('dark');
-  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const themeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 모바일 감지
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -70,20 +39,6 @@ export default function AdminPage() {
   useEffect(() => {
     loadProducts();
   }, []);
-
-  // 테마 드롭다운 외부 클릭 시 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (themeDropdownRef.current && !themeDropdownRef.current.contains(event.target as Node)) {
-        setIsThemeDropdownOpen(false);
-      }
-    };
-
-    if (isThemeDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isThemeDropdownOpen]);
 
   const loadProducts = async () => {
     try {
@@ -219,106 +174,54 @@ export default function AdminPage() {
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 flex-shrink-0">
         <div className="max-w-full px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <a href="/" className="text-xl font-bold">
+          <div className="flex items-center gap-2 md:gap-4">
+            <a href="/" className="text-lg md:text-xl font-bold">
               THE<span className="text-cyan-400">X</span>EN
             </a>
-            <span className="text-gray-500">|</span>
-            <span className="text-gray-400">관리자</span>
-            <span className="text-gray-600 text-sm">({products.length}개)</span>
+            <span className="text-gray-500 hidden md:inline">|</span>
+            <span className="text-gray-400 hidden md:inline">관리자</span>
+            <span className="text-gray-600 text-xs md:text-sm">({products.length})</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Background Theme Selector */}
-            {viewMode === 'grid' && (
-              <div ref={themeDropdownRef} className="relative">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* View Toggle - PC only */}
+            {!isMobile && (
+              <div className="flex bg-gray-700 rounded-lg p-1">
                 <button
-                  onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-sm"
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-cyan-500 text-black font-medium'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
                 >
-                  <span className="text-gray-400">배경:</span>
-                  <span className="text-white">{getThemeName(bgTheme)}</span>
-                  <svg
-                    className={`w-4 h-4 text-gray-400 transition-transform ${isThemeDropdownOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  그리드
                 </button>
-
-                {isThemeDropdownOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
-                    {THEME_CATEGORIES.map((category) => (
-                      <div key={category}>
-                        <div className="px-3 py-2 bg-gray-900 text-xs font-medium text-gray-400">
-                          {category}
-                        </div>
-                        {BACKGROUND_THEMES.filter(t => t.category === category).map((theme) => (
-                          <button
-                            key={theme.id}
-                            onClick={() => {
-                              setBgTheme(theme.id);
-                              setIsThemeDropdownOpen(false);
-                            }}
-                            className={`w-full px-3 py-2 text-left text-sm transition-colors flex items-center gap-2 ${
-                              bgTheme === theme.id
-                                ? 'bg-cyan-500/20 text-cyan-400'
-                                : 'text-gray-300 hover:bg-gray-700'
-                            }`}
-                          >
-                            {bgTheme === theme.id && (
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                            <span className={bgTheme === theme.id ? '' : 'ml-6'}>{theme.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-cyan-500 text-black font-medium'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  목록
+                </button>
               </div>
             )}
 
-            {/* View Toggle */}
-            <div className="flex bg-gray-700 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-cyan-500 text-black font-medium'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                그리드
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-cyan-500 text-black font-medium'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                목록
-              </button>
-            </div>
-
             <button
               onClick={() => openModal()}
-              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-black font-medium rounded-lg transition-colors text-sm"
+              className="px-3 md:px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-black font-medium rounded-lg transition-colors text-xs md:text-sm"
             >
-              + 새 제품
+              + {isMobile ? '추가' : '새 제품'}
             </button>
 
             <a
               href="/"
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-2 md:px-4 py-2 text-xs md:text-sm text-gray-400 hover:text-white transition-colors"
             >
-              메인으로
+              {isMobile ? '메인' : '메인으로'}
             </a>
           </div>
         </div>
@@ -338,12 +241,19 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
         {viewMode === 'grid' ? (
-          <AdminHexGrid
-            products={products}
-            onReorder={handleReorder}
-            onProductClick={openModal}
-            bgTheme={bgTheme}
-          />
+          isMobile ? (
+            <AdminMobileHexGrid
+              products={products}
+              onReorder={handleReorder}
+              onProductClick={openModal}
+            />
+          ) : (
+            <AdminHexGrid
+              products={products}
+              onReorder={handleReorder}
+              onProductClick={openModal}
+            />
+          )
         ) : (
           <div className="h-full overflow-auto p-4">
             <div className="max-w-5xl mx-auto">
