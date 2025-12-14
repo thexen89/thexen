@@ -15,6 +15,7 @@ model Product {
   description    String
   priority       Int
   shape          String?
+  showInfo       Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

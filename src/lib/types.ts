@@ -8,6 +8,7 @@ export interface Product {
   priority: number;
   createdAt: string;
   shape?: 'hexagon' | 'circle';
+  showInfo?: boolean;
 }
 
 export interface HexPosition {

@@ -73,10 +73,9 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen bg-[#0f0f1a] flex items-center justify-center">
+      <div className="h-screen w-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#00d4ff] border-t-transparent rounded-full animate-spin" />
-          <p className="text-white/60">Loading...</p>
+          <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -86,77 +85,75 @@ export default function Home() {
   if (viewState === 'landing' || viewState === 'collapsing') {
     return (
       <main
-        className="h-screen w-screen overflow-hidden relative bg-[#0f0f1a] cursor-pointer"
+        className="h-screen w-screen overflow-hidden relative bg-black cursor-pointer"
         onClick={viewState === 'landing' ? handleLandingClick : undefined}
       >
-        {/* 배경 그라데이션 */}
-        <div className="absolute inset-0 bg-gradient-radial from-[#1a1a3e] via-[#0f0f1a] to-[#0a0a12]" />
-
-        {/* 장식용 원형 패턴 */}
-        <div className="absolute inset-0 overflow-hidden">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className={`absolute rounded-full bg-[#00d4ff]/5 transition-all duration-500 ${
-                viewState === 'collapsing' ? 'scale-0 opacity-0' : ''
-              }`}
-              style={{
-                width: `${150 + i * 100}px`,
-                height: `${150 + i * 100}px`,
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                transitionDelay: `${i * 30}ms`,
-              }}
-            />
-          ))}
-        </div>
+        {/* 노이즈 텍스처 */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+          }}
+        />
 
         {/* 메인 콘텐츠 */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-400 ${
-            viewState === 'collapsing' ? 'scale-0 opacity-0' : ''
+          className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 ${
+            viewState === 'collapsing' ? 'scale-50 opacity-0' : ''
           }`}
         >
           {/* 로고 */}
-          <div className="mb-8">
-            <h1 className="text-6xl md:text-8xl font-bold text-white tracking-wider">
-              THE<span className="text-[#00d4ff]">X</span>EN
+          <div className="relative">
+            <h1 className="text-7xl md:text-[12rem] font-black text-white tracking-tighter leading-none">
+              THEXEN
             </h1>
-            <p className="text-center text-white/50 mt-4 text-lg">
-              ODM/OEM 굿즈 전문 제조
+            {/* 글리치 효과 레이어 */}
+            <h1
+              className="absolute inset-0 text-7xl md:text-[12rem] font-black tracking-tighter leading-none text-white/10 blur-[2px]"
+              style={{ transform: 'translate(4px, 4px)' }}
+            >
+              THEXEN
+            </h1>
+          </div>
+
+          {/* 서브 텍스트 */}
+          <div className="mt-6 md:mt-8 flex items-center gap-4">
+            <div className="h-[1px] w-12 bg-white/30" />
+            <p className="text-white/50 text-xs md:text-sm tracking-[0.3em] uppercase">
+              Premium Goods Manufacturing
             </p>
+            <div className="h-[1px] w-12 bg-white/30" />
           </div>
 
           {/* 클릭 유도 */}
-          <div className="mt-12 flex flex-col items-center gap-4 animate-pulse">
-            <div className="w-12 h-12 rounded-full border-2 border-[#00d4ff]/50 flex items-center justify-center">
+          <div className="absolute bottom-16 md:bottom-20 flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center animate-bounce">
               <svg
-                className="w-6 h-6 text-[#00d4ff]"
+                className="w-5 h-5 text-white/60"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
             </div>
-            <p className="text-white/40 text-sm">화면을 클릭하세요</p>
+            <p className="text-white/30 text-xs tracking-widest uppercase">Enter</p>
           </div>
         </div>
+
+        {/* 코너 장식 */}
+        <div className={`absolute top-8 left-8 w-16 h-16 border-l border-t border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+        <div className={`absolute top-8 right-8 w-16 h-16 border-r border-t border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+        <div className={`absolute bottom-8 left-8 w-16 h-16 border-l border-b border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+        <div className={`absolute bottom-8 right-8 w-16 h-16 border-r border-b border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
 
         {/* 수렴 시 중앙 점 */}
         {viewState === 'collapsing' && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="w-4 h-4 rounded-full bg-[#00d4ff] animate-ping" />
-            <div className="absolute inset-0 w-4 h-4 rounded-full bg-[#00d4ff]" />
+            <div className="w-2 h-2 rounded-full bg-white animate-ping" />
+            <div className="absolute inset-0 w-2 h-2 rounded-full bg-white" />
           </div>
         )}
-
-        <style jsx>{`
-          .bg-gradient-radial {
-            background: radial-gradient(ellipse at center, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
-          }
-        `}</style>
       </main>
     );
   }
@@ -168,11 +165,10 @@ export default function Home() {
       {isMobile && (
         <header className="absolute top-0 left-0 right-0 z-10 p-4 flex items-center justify-between pointer-events-none">
           <div className="pointer-events-auto">
-            <h1 className="text-lg font-bold text-white tracking-wider">
-              THE<span className="text-[#00d4ff]">X</span>EN
+            <h1 className="text-lg font-black text-white tracking-tighter">
+              THEXEN
             </h1>
           </div>
-
         </header>
       )}
 

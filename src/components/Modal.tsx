@@ -131,14 +131,14 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
       {/* Modal */}
       <div
         ref={modalRef}
-        className="relative bg-[#1a1a2e] max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl transition-all duration-300 ease-out"
+        className="relative bg-black max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl transition-all duration-300 ease-out"
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+          className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -156,32 +156,30 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
           </svg>
         </button>
 
-        {/* Image/Video Carousel */}
-        <div className="relative aspect-video bg-[#0f0f1a] flex items-center justify-center">
+        {/* Image/Video - 전체 화면 */}
+        <div className="relative w-full h-full min-h-[50vh] max-h-[90vh] bg-black flex items-center justify-center">
           {videoEmbed ? (
-            // 동영상 재생
             <iframe
               src={
                 videoEmbed.type === 'youtube'
                   ? `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1`
                   : `https://player.vimeo.com/video/${videoEmbed.id}?autoplay=1`
               }
-              className="w-full h-full"
+              className="w-full aspect-video"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
           ) : (
-            // 이미지 (contain 모드)
             <img
               src={currentMedia}
               alt={`${product.name} - ${currentIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-[90vh] object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = `data:image/svg+xml,${encodeURIComponent(`
                   <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
-                    <rect fill="#1a1a2e" width="400" height="300"/>
-                    <text fill="#4a4a6a" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="150">${product.name}</text>
+                    <rect fill="#111" width="400" height="300"/>
+                    <text fill="#444" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="150">${product.name}</text>
                   </svg>
                 `)}`;
               }}
@@ -193,7 +191,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
             <>
               <button
                 onClick={goToPrev}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -212,7 +210,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
               </button>
               <button
                 onClick={goToNext}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -239,7 +237,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
                 <button
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}
-                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                  className={`w-2 h-2 rounded-full transition-colors ${
                     idx === currentIndex ? 'bg-white' : 'bg-white/40 hover:bg-white/60'
                   }`}
                 />
@@ -253,28 +251,21 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
               {currentIndex + 1} / {images.length}
             </div>
           )}
-        </div>
 
-        {/* Content */}
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1">
+          {/* Info Overlay - showInfo가 true일 때만 표시 */}
+          {product.showInfo && (
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+              <h2 className="text-xl font-bold text-white mb-1">
                 {product.name}
               </h2>
-              <p className="text-[#00d4ff] font-medium">{product.client}</p>
+              <p className="text-white/70 text-sm">{product.client}</p>
+              {product.description && (
+                <p className="text-white/50 text-sm mt-2 line-clamp-2">
+                  {product.description}
+                </p>
+              )}
             </div>
-          </div>
-
-          {product.description && (
-            <p className="text-gray-300 leading-relaxed mb-6">
-              {product.description}
-            </p>
           )}
-
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span>등록일: {product.createdAt}</span>
-          </div>
         </div>
       </div>
     </div>
