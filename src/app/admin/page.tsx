@@ -36,6 +36,7 @@ export default function AdminPage() {
     images: [] as string[],
     thumbnailIndex: 0,
     description: '',
+    showInfo: false,
   });
 
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function AdminPage() {
         images: product.images.length > 0 ? product.images : [],
         thumbnailIndex: product.thumbnailIndex,
         description: product.description,
+        showInfo: product.showInfo || false,
       });
     } else {
       setEditingProduct(null);
@@ -78,6 +80,7 @@ export default function AdminPage() {
         images: [],
         thumbnailIndex: 0,
         description: '',
+        showInfo: false,
       });
     }
     setIsModalOpen(true);
@@ -92,6 +95,7 @@ export default function AdminPage() {
       images: [],
       thumbnailIndex: 0,
       description: '',
+      showInfo: false,
     });
   };
 
@@ -338,7 +342,7 @@ export default function AdminPage() {
                       <th className="px-4 py-3 text-left text-sm font-medium text-white/50 w-20">이미지</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-white/50">제품명</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-white/50">고객사</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-white/50">등록일</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-white/50 w-20">텍스트</th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-white/50 w-32">작업</th>
                     </tr>
                   </thead>
@@ -401,7 +405,39 @@ export default function AdminPage() {
                             <span className="font-medium">{product.name}</span>
                           </td>
                           <td className="px-4 py-3 text-white/50">{product.client}</td>
-                          <td className="px-4 py-3 text-white/50 text-sm">{product.createdAt}</td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={async () => {
+                                const newShowInfo = !product.showInfo;
+                                // Optimistic update
+                                setProducts(prev => prev.map(p =>
+                                  p.id === product.id ? { ...p, showInfo: newShowInfo } : p
+                                ));
+                                try {
+                                  const res = await fetch('/api/products', {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ ...product, showInfo: newShowInfo }),
+                                  });
+                                  if (!res.ok) throw new Error('Failed');
+                                } catch {
+                                  await loadProducts();
+                                  showMessage('error', '변경에 실패했습니다.');
+                                }
+                              }}
+                              className={`
+                                relative w-10 h-5 rounded-full transition-colors duration-200
+                                ${product.showInfo ? 'bg-white' : 'bg-white/20'}
+                              `}
+                            >
+                              <span
+                                className={`
+                                  absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform duration-200
+                                  ${product.showInfo ? 'translate-x-5 bg-black' : 'translate-x-0 bg-white/50'}
+                                `}
+                              />
+                            </button>
+                          </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-2">
                               <button
@@ -634,6 +670,29 @@ export default function AdminPage() {
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30 resize-none"
                   placeholder="제품에 대한 설명을 입력하세요."
                 />
+              </div>
+
+              {/* 텍스트 표시 토글 */}
+              <div className="flex items-center justify-between py-3 px-4 bg-white/5 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-white/70">텍스트 표시</p>
+                  <p className="text-xs text-white/40 mt-0.5">메인 화면에서 제품명과 고객사를 표시합니다</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, showInfo: !formData.showInfo })}
+                  className={`
+                    relative w-12 h-6 rounded-full transition-colors duration-200
+                    ${formData.showInfo ? 'bg-white' : 'bg-white/20'}
+                  `}
+                >
+                  <span
+                    className={`
+                      absolute top-1 left-1 w-4 h-4 rounded-full transition-transform duration-200
+                      ${formData.showInfo ? 'translate-x-6 bg-black' : 'translate-x-0 bg-white/50'}
+                    `}
+                  />
+                </button>
               </div>
 
               {editingProduct && (

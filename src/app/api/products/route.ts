@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         description: body.description,
         priority: body.priority || (maxPriority._max.priority || 0) + 1,
         shape: body.shape,
+        showInfo: body.showInfo || false,
       },
     });
 
@@ -54,6 +55,7 @@ export async function PUT(request: Request) {
         description: body.description,
         priority: body.priority,
         shape: body.shape,
+        showInfo: body.showInfo ?? false,
       },
     });
 
