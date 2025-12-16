@@ -15,6 +15,8 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isMobile, setIsMobile] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 모바일 감지
@@ -159,10 +161,72 @@ export default function AdminPage() {
     }
   };
 
+  // 목록 뷰 드래그 앤 드롭 핸들러
+  const handleListDragStart = (e: React.DragEvent, productId: string) => {
+    setDraggedId(productId);
+    e.dataTransfer.effectAllowed = 'move';
+    // 드래그 이미지를 투명하게
+    const dragImage = document.createElement('div');
+    dragImage.style.opacity = '0';
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, 0, 0);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+  };
+
+  const handleListDragOver = (e: React.DragEvent, productId: string) => {
+    e.preventDefault();
+    if (productId !== draggedId) {
+      setDragOverId(productId);
+    }
+  };
+
+  const handleListDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleListDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const dragIndex = sortedProducts.findIndex(p => p.id === draggedId);
+    const dropIndex = sortedProducts.findIndex(p => p.id === targetId);
+
+    if (dragIndex === -1 || dropIndex === -1) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    // 순서 변경
+    const newProducts = [...sortedProducts];
+    const [removed] = newProducts.splice(dragIndex, 1);
+    newProducts.splice(dropIndex, 0, removed);
+
+    // 우선순위 재할당
+    const updates = newProducts.map((product, index) => ({
+      ...product,
+      priority: index + 1,
+    }));
+
+    handleReorder(updates);
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleListDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
@@ -170,29 +234,29 @@ export default function AdminPage() {
   const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900 text-white overflow-hidden">
+    <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 flex-shrink-0">
+      <header className="border-b border-white/10 flex-shrink-0">
         <div className="max-w-full px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4">
-            <a href="/" className="text-lg md:text-xl font-bold">
-              THE<span className="text-cyan-400">X</span>EN
+            <a href="/" className="text-lg md:text-xl font-black tracking-tighter">
+              THEXEN
             </a>
-            <span className="text-gray-500 hidden md:inline">|</span>
-            <span className="text-gray-400 hidden md:inline">관리자</span>
-            <span className="text-gray-600 text-xs md:text-sm">({products.length})</span>
+            <span className="text-white/20 hidden md:inline">|</span>
+            <span className="text-white/50 hidden md:inline text-sm">관리자</span>
+            <span className="text-white/30 text-xs md:text-sm">({products.length})</span>
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
             {/* View Toggle - PC only */}
             {!isMobile && (
-              <div className="flex bg-gray-700 rounded-lg p-1">
+              <div className="flex border border-white/20 rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                     viewMode === 'grid'
-                      ? 'bg-cyan-500 text-black font-medium'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-white text-black font-medium'
+                      : 'text-white/50 hover:text-white'
                   }`}
                 >
                   그리드
@@ -201,8 +265,8 @@ export default function AdminPage() {
                   onClick={() => setViewMode('list')}
                   className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                     viewMode === 'list'
-                      ? 'bg-cyan-500 text-black font-medium'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-white text-black font-medium'
+                      : 'text-white/50 hover:text-white'
                   }`}
                 >
                   목록
@@ -212,14 +276,14 @@ export default function AdminPage() {
 
             <button
               onClick={() => openModal()}
-              className="px-3 md:px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-black font-medium rounded-lg transition-colors text-xs md:text-sm"
+              className="px-3 md:px-4 py-2 bg-white hover:bg-white/90 text-black font-medium rounded-lg transition-colors text-xs md:text-sm"
             >
               + {isMobile ? '추가' : '새 제품'}
             </button>
 
             <a
               href="/"
-              className="px-2 md:px-4 py-2 text-xs md:text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-2 md:px-4 py-2 text-xs md:text-sm text-white/50 hover:text-white transition-colors"
             >
               {isMobile ? '메인' : '메인으로'}
             </a>
@@ -230,8 +294,10 @@ export default function AdminPage() {
       {/* Message Toast */}
       {message && (
         <div
-          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg ${
-            message.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg border ${
+            message.type === 'success'
+              ? 'bg-black border-white/20 text-white'
+              : 'bg-red-950 border-red-500/50 text-red-200'
           }`}
         >
           {message.text}
@@ -258,80 +324,108 @@ export default function AdminPage() {
           <div className="h-full overflow-auto p-4">
             <div className="max-w-5xl mx-auto">
               {/* Info */}
-              <div className="bg-gray-800 rounded-lg p-4 mb-4 text-sm text-gray-400">
-                <span className="text-cyan-400 font-medium">팁:</span> 그리드 뷰에서 원을 드래그하여 순서를 변경할 수 있습니다.
+              <div className="border border-white/10 rounded-lg p-4 mb-4 text-sm text-white/50">
+                <span className="text-white font-medium">팁:</span> 행을 드래그하여 순서를 변경할 수 있습니다. 좌측의 ≡ 아이콘을 드래그하세요.
               </div>
 
               {/* List */}
-              <div className="bg-gray-800 rounded-lg overflow-hidden">
+              <div className="border border-white/10 rounded-lg overflow-hidden">
                 <table className="w-full">
-                  <thead className="bg-gray-700">
+                  <thead className="bg-white/5">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300 w-16">순서</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300 w-20">이미지</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">제품명</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">고객사</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">등록일</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-300 w-32">작업</th>
+                      <th className="px-2 py-3 text-center text-sm font-medium text-white/50 w-10"></th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-white/50 w-16">순서</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-white/50 w-20">이미지</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-white/50">제품명</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-white/50">고객사</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-white/50">등록일</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-white/50 w-32">작업</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {sortedProducts.map((product, index) => (
-                      <tr key={product.id} className="hover:bg-gray-700/50">
-                        <td className="px-4 py-3">
-                          <span className={`
-                            inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
-                            ${index === 0 ? 'bg-cyan-500 text-black' : 'bg-gray-700 text-gray-300'}
-                          `}>
-                            {index + 1}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="w-12 h-12 bg-gray-700 rounded-full overflow-hidden">
-                            <img
-                              src={product.images[product.thumbnailIndex] || product.images[0]}
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = `data:image/svg+xml,${encodeURIComponent(`
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
-                                    <rect fill="#374151" width="48" height="48"/>
-                                    <text fill="#6b7280" font-size="8" text-anchor="middle" x="24" y="26">No IMG</text>
-                                  </svg>
-                                `)}`;
-                              }}
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-medium">{product.name}</span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-400">{product.client}</td>
-                        <td className="px-4 py-3 text-gray-400 text-sm">{product.createdAt}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => openModal(product)}
-                              className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-500 rounded transition-colors"
-                            >
-                              수정
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              className="px-3 py-1 text-sm bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded transition-colors"
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-white/10">
+                    {sortedProducts.map((product, index) => {
+                      const isDragged = draggedId === product.id;
+                      const isDragOver = dragOverId === product.id;
+
+                      return (
+                        <tr
+                          key={product.id}
+                          draggable
+                          onDragStart={(e) => handleListDragStart(e, product.id)}
+                          onDragOver={(e) => handleListDragOver(e, product.id)}
+                          onDragLeave={handleListDragLeave}
+                          onDrop={(e) => handleListDrop(e, product.id)}
+                          onDragEnd={handleListDragEnd}
+                          className={`
+                            transition-all duration-200
+                            ${isDragged ? 'opacity-50 bg-white/5' : 'hover:bg-white/5'}
+                            ${isDragOver ? 'bg-white/10 border-t-2 border-white/50' : ''}
+                          `}
+                        >
+                          {/* 드래그 핸들 */}
+                          <td className="px-2 py-3 cursor-grab active:cursor-grabbing">
+                            <div className="flex items-center justify-center text-white/30 hover:text-white transition-colors">
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z" />
+                              </svg>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`
+                              inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold
+                              ${index === 0 ? 'bg-white text-black' : 'bg-white/10 text-white/70'}
+                            `}>
+                              {index + 1}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="w-12 h-12 bg-white/10 rounded-full overflow-hidden">
+                              <img
+                                src={product.images[product.thumbnailIndex] || product.images[0]}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                                draggable={false}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = `data:image/svg+xml,${encodeURIComponent(`
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+                                      <rect fill="#1a1a1a" width="48" height="48"/>
+                                      <text fill="#666" font-size="8" text-anchor="middle" x="24" y="26">No IMG</text>
+                                    </svg>
+                                  `)}`;
+                                }}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-medium">{product.name}</span>
+                          </td>
+                          <td className="px-4 py-3 text-white/50">{product.client}</td>
+                          <td className="px-4 py-3 text-white/50 text-sm">{product.createdAt}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => openModal(product)}
+                                className="px-3 py-1 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors"
+                              >
+                                수정
+                              </button>
+                              <button
+                                onClick={() => handleDelete(product.id)}
+                                className="px-3 py-1 text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
                 {sortedProducts.length === 0 && (
-                  <div className="py-12 text-center text-gray-500">
+                  <div className="py-12 text-center text-white/30">
                     등록된 제품이 없습니다. 새 제품을 추가해 주세요.
                   </div>
                 )}
@@ -343,15 +437,15 @@ export default function AdminPage() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-gray-800 rounded-xl w-full max-w-lg">
-            <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold">
                 {editingProduct ? '제품 수정' : '새 제품 추가'}
               </h3>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-white"
+                className="text-white/50 hover:text-white transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -361,7 +455,7 @@ export default function AdminPage() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-white/70 mb-1">
                   제품명 *
                 </label>
                 <input
@@ -369,13 +463,13 @@ export default function AdminPage() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-cyan-500"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30"
                   placeholder="프리미엄 에코백"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-white/70 mb-1">
                   고객사 *
                 </label>
                 <input
@@ -383,13 +477,13 @@ export default function AdminPage() {
                   required
                   value={formData.client}
                   onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-cyan-500"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30"
                   placeholder="스타벅스 코리아"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-white/70 mb-1">
                   이미지 *
                 </label>
 
@@ -401,8 +495,8 @@ export default function AdminPage() {
                         key={idx}
                         className={`relative group w-20 h-20 rounded-lg overflow-hidden border-2 ${
                           formData.thumbnailIndex === idx
-                            ? 'border-cyan-500'
-                            : 'border-gray-600'
+                            ? 'border-white'
+                            : 'border-white/20'
                         }`}
                       >
                         <img
@@ -415,7 +509,7 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => setFormData({ ...formData, thumbnailIndex: idx })}
-                              className="p-1.5 bg-cyan-500 rounded text-black text-xs"
+                              className="p-1.5 bg-white rounded text-black text-xs"
                               title="썸네일로 설정"
                             >
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -443,7 +537,7 @@ export default function AdminPage() {
                           </button>
                         </div>
                         {formData.thumbnailIndex === idx && (
-                          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-cyan-500 text-black text-[10px] font-medium rounded">
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-white text-black text-[10px] font-medium rounded">
                             썸네일
                           </div>
                         )}
@@ -502,7 +596,7 @@ export default function AdminPage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="w-full px-4 py-3 border-2 border-dashed border-gray-600 hover:border-cyan-500 rounded-lg transition-colors text-gray-400 hover:text-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border-2 border-dashed border-white/20 hover:border-white/40 rounded-lg transition-colors text-white/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUploading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -521,7 +615,7 @@ export default function AdminPage() {
                     </span>
                   )}
                 </button>
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-white/30">
                   {formData.images.length === 0
                     ? '최소 1개 이상의 이미지를 업로드하세요.'
                     : `${formData.images.length}개 이미지 (첫 번째 이미지 클릭하여 썸네일 지정)`
@@ -530,23 +624,23 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-white/70 mb-1">
                   설명
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-cyan-500 resize-none"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30 resize-none"
                   placeholder="제품에 대한 설명을 입력하세요."
                 />
               </div>
 
               {editingProduct && (
-                <div className="pt-2 pb-2 px-3 bg-gray-700/50 rounded-lg">
-                  <p className="text-sm text-gray-400">
-                    현재 순서: <span className="text-cyan-400 font-bold">#{sortedProducts.findIndex(p => p.id === editingProduct.id) + 1}</span>
-                    <span className="text-gray-500 ml-2">(그리드 뷰에서 드래그하여 변경)</span>
+                <div className="pt-2 pb-2 px-3 bg-white/5 rounded-lg">
+                  <p className="text-sm text-white/50">
+                    현재 순서: <span className="text-white font-bold">#{sortedProducts.findIndex(p => p.id === editingProduct.id) + 1}</span>
+                    <span className="text-white/30 ml-2">(그리드 뷰에서 드래그하여 변경)</span>
                   </p>
                 </div>
               )}
@@ -556,7 +650,7 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => handleDelete(editingProduct.id)}
-                    className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded-lg transition-colors"
+                    className="px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
                   >
                     삭제
                   </button>
@@ -565,14 +659,14 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-black font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-6 py-2 bg-white hover:bg-white/90 text-black font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {isSaving ? '저장 중...' : '저장'}
                 </button>

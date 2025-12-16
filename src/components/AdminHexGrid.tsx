@@ -126,9 +126,9 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
       className="w-full h-full overflow-y-auto bg-black"
     >
       {/* Instructions */}
-      <div className="absolute top-20 left-6 z-10 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-3">
-        <p className="text-cyan-400 font-medium text-sm mb-1">순서 변경 모드</p>
-        <p className="text-white/60 text-xs">드래그하여 순서 변경 | 클릭하여 수정</p>
+      <div className="absolute top-20 left-6 z-10 bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg px-4 py-3">
+        <p className="text-white font-medium text-sm mb-1">순서 변경 모드</p>
+        <p className="text-white/50 text-xs">드래그하여 순서 변경 | 클릭하여 수정</p>
       </div>
 
       <div className="relative py-6 px-8 pt-24">
@@ -162,7 +162,7 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
                     group relative rounded-full overflow-hidden flex-shrink-0 cursor-pointer
                     transition-all duration-200 ease-out
                     ${isDragged ? 'opacity-50 scale-90' : 'hover:scale-[1.15] hover:z-20'}
-                    ${isDragOver ? 'ring-4 ring-cyan-400 scale-110' : ''}
+                    ${isDragOver ? 'ring-4 ring-white scale-110' : ''}
                   `}
                   style={{
                     width: ITEM_SIZE,
@@ -184,7 +184,7 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
                   <div className={`
                     absolute top-1 left-1 w-6 h-6 rounded-full flex items-center justify-center
                     text-xs font-bold z-10
-                    ${productIndex === 0 ? 'bg-cyan-500 text-black' : 'bg-black/70 text-white'}
+                    ${productIndex === 0 ? 'bg-white text-black' : 'bg-black/70 text-white'}
                   `}>
                     {productIndex + 1}
                   </div>
@@ -196,7 +196,7 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
                   `}
                     style={{
                       boxShadow: isDragOver
-                        ? '0 0 40px 15px rgba(0,212,255,0.5), inset 0 0 20px rgba(0,212,255,0.2)'
+                        ? '0 0 40px 15px rgba(255,255,255,0.5), inset 0 0 20px rgba(255,255,255,0.2)'
                         : '0 0 30px 10px rgba(255,255,255,0.3), inset 0 0 20px rgba(255,255,255,0.1)',
                     }}
                   />
@@ -204,13 +204,13 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
                   {/* 호버 시 테두리 */}
                   <div className={`
                     absolute inset-0 rounded-full border-2 transition-all duration-300
-                    ${isDragOver ? 'border-cyan-400' : 'border-white/0 group-hover:border-white/40'}
+                    ${isDragOver ? 'border-white' : 'border-white/0 group-hover:border-white/40'}
                   `} />
 
                   {/* 드래그 오버 시 안내 */}
                   {isDragOver && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
-                      <span className="text-cyan-400 text-xs font-medium">이동</span>
+                      <span className="text-white text-xs font-medium">이동</span>
                     </div>
                   )}
                 </div>
