@@ -116,7 +116,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[200] flex items-center justify-center p-4 transition-opacity duration-300 ${
         animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
       }`}
       onClick={handleClose}
