@@ -116,22 +116,22 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
 
   return (
     <div
-      className={`fixed inset-0 z-[200] flex items-center justify-center p-4 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-300 ${
         animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
       }`}
       onClick={handleClose}
     >
       {/* Backdrop */}
       <div
-        className={`absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black transition-opacity duration-300 ${
           animationState === 'entering' ? 'opacity-0' : animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
         }`}
       />
 
-      {/* Modal */}
+      {/* Modal - 전체화면 */}
       <div
         ref={modalRef}
-        className="relative bg-black max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl transition-all duration-300 ease-out"
+        className="relative w-full h-full overflow-hidden transition-all duration-300 ease-out"
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
@@ -157,7 +157,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
         </button>
 
         {/* Image/Video - 전체 화면 */}
-        <div className="relative w-full h-full min-h-[50vh] max-h-[90vh] bg-black flex items-center justify-center">
+        <div className="relative w-full h-full bg-black flex items-center justify-center">
           {videoEmbed ? (
             <iframe
               src={
@@ -173,7 +173,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
             <img
               src={currentMedia}
               alt={`${product.name} - ${currentIndex + 1}`}
-              className="max-w-full max-h-[90vh] object-contain"
+              className="max-w-full max-h-full object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = `data:image/svg+xml,${encodeURIComponent(`
