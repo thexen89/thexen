@@ -110,7 +110,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
     return {
       transform: 'translate(0, 0) scale(1)',
       opacity: 1,
-      borderRadius: '1rem',
+      borderRadius: '0',
     };
   };
 
