@@ -236,12 +236,6 @@ export default function Home() {
         originPosition={clickPosition}
       />
 
-      {/* Product count - PC only */}
-      {!isMobile && viewState === 'grid' && (
-        <div className="absolute top-20 left-6 text-white/40 text-sm">
-          {products.length}개의 포트폴리오
-        </div>
-      )}
 
       <style jsx>{`
         @keyframes expand-from-center {

@@ -133,7 +133,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative py-6 mx-auto" style={{ width: 'fit-content' }}>
+      <div className="relative mx-auto" style={{ width: 'fit-content', paddingTop: '10vh', paddingBottom: '10vh' }}>
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}
@@ -196,9 +196,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
         ))}
       </div>
 
-      <div className="fixed bottom-6 left-6 text-white/40 text-sm pointer-events-none">
-        <p>스크롤: 탐색 | 클릭: 상세보기</p>
-      </div>
-    </div>
+          </div>
   );
 }
