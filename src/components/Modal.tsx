@@ -121,17 +121,17 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
       }`}
       onClick={handleClose}
     >
-      {/* Backdrop */}
+      {/* Backdrop - 반투명 어두운 배경 */}
       <div
-        className={`absolute inset-0 bg-black transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black/90 transition-opacity duration-300 ${
           animationState === 'entering' ? 'opacity-0' : animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
         }`}
       />
 
-      {/* Modal - 전체화면 */}
+      {/* Modal - 이미지만 표시 (배경/테두리 없음) */}
       <div
         ref={modalRef}
-        className="relative w-full h-full overflow-hidden transition-all duration-300 ease-out"
+        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-300 ease-out"
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
@@ -156,8 +156,8 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
           </svg>
         </button>
 
-        {/* Image/Video - 전체 화면 */}
-        <div className="relative w-full h-full bg-black flex items-center justify-center">
+        {/* Image/Video */}
+        <div className="relative flex items-center justify-center">
           {videoEmbed ? (
             <iframe
               src={
@@ -173,7 +173,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
             <img
               src={currentMedia}
               alt={`${product.name} - ${currentIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
+              className="max-w-[90vw] max-h-[90vh] object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = `data:image/svg+xml,${encodeURIComponent(`
