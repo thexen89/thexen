@@ -10,11 +10,11 @@ interface AdminHexGridProps {
   onProductClick: (product: Product) => void;
 }
 
-const ITEM_SIZE = 90; // 원 크기 줄임
-const HORIZONTAL_GAP = 8; // 간격 좁게
-const VERTICAL_GAP = 8; // 간격 좁게
-const LEFT_PADDING = 80; // 왼쪽 여백
-const RIGHT_MARGIN_RATIO = 0.25; // 오른쪽 25% 여백
+const ITEM_SIZE = 90; // 원 크기
+const HORIZONTAL_GAP = 20; // 가로 간격
+const VERTICAL_GAP = 12; // 세로 간격
+const PADDING = 60; // 좌우 동일 여백
+const MAX_COLS = 10; // 최대 열 개수 (오른쪽 여백 생성용)
 
 export default function AdminHexGrid({ products, onReorder, onProductClick }: AdminHexGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,11 +26,11 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
     const updateCols = () => {
       if (containerRef.current) {
         const width = containerRef.current.clientWidth;
-        // 왼쪽 여백 + 오른쪽 25% 여백 제외
-        const availableWidth = width - LEFT_PADDING - (width * RIGHT_MARGIN_RATIO);
+        const availableWidth = width - (PADDING * 2); // 좌우 동일 패딩
         const itemWidth = ITEM_SIZE + HORIZONTAL_GAP;
-        const newCols = Math.floor(availableWidth / itemWidth);
-        setCols(Math.max(3, newCols));
+        const calculatedCols = Math.floor(availableWidth / itemWidth);
+        // 최대 열 개수 제한으로 오른쪽 여백 확보
+        setCols(Math.min(MAX_COLS, Math.max(3, calculatedCols)));
       }
     };
 
@@ -135,11 +135,11 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         <p className="text-white/50 text-xs">드래그하여 순서 변경 | 클릭하여 수정</p>
       </div>
 
-      <div className="relative py-6 pt-24" style={{ paddingLeft: LEFT_PADDING }}>
+      <div className="relative py-6 pt-24 mx-auto" style={{ width: 'fit-content' }}>
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}
-            className="flex justify-start"
+            className="flex"
             style={{
               gap: HORIZONTAL_GAP,
               marginTop: rowIndex === 0 ? 0 : VERTICAL_GAP,

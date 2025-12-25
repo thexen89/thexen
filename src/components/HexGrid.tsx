@@ -15,14 +15,14 @@ interface HexGridProps {
   onProductClick: (product: Product, position?: ClickPosition) => void;
 }
 
-const ITEM_SIZE = 90; // 원 크기 줄임
-const HORIZONTAL_GAP = 8; // 간격 좁게
-const VERTICAL_GAP = 8; // 간격 좁게
+const ITEM_SIZE = 90; // 원 크기
+const HORIZONTAL_GAP = 20; // 가로 간격
+const VERTICAL_GAP = 12; // 세로 간격
 const HOVER_RADIUS = 200; // 마우스 영향 반경
 const MAX_SCALE = 1.5; // 최대 확대 비율 1.5배
 const MIN_SCALE = 1.0; // 최소 비율
-const LEFT_PADDING = 80; // 왼쪽 여백
-const RIGHT_MARGIN_RATIO = 0.25; // 오른쪽 25% 여백
+const PADDING = 60; // 좌우 동일 여백
+const MAX_COLS = 10; // 최대 열 개수 (오른쪽 여백 생성용)
 
 export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,11 +34,11 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     const updateCols = () => {
       if (containerRef.current) {
         const width = containerRef.current.clientWidth;
-        // 왼쪽 여백 + 오른쪽 25% 여백 제외
-        const availableWidth = width - LEFT_PADDING - (width * RIGHT_MARGIN_RATIO);
+        const availableWidth = width - (PADDING * 2); // 좌우 동일 패딩
         const itemWidth = ITEM_SIZE + HORIZONTAL_GAP;
-        const newCols = Math.floor(availableWidth / itemWidth);
-        setCols(Math.max(3, newCols));
+        const calculatedCols = Math.floor(availableWidth / itemWidth);
+        // 최대 열 개수 제한으로 오른쪽 여백 확보
+        setCols(Math.min(MAX_COLS, Math.max(3, calculatedCols)));
       }
     };
 
@@ -133,11 +133,11 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative py-6" style={{ paddingLeft: LEFT_PADDING }}>
+      <div className="relative py-6 mx-auto" style={{ width: 'fit-content' }}>
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}
-            className="flex justify-start"
+            className="flex"
             style={{
               gap: HORIZONTAL_GAP,
               marginTop: rowIndex === 0 ? 0 : VERTICAL_GAP,
