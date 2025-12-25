@@ -168,16 +168,14 @@ export default function Home() {
   return (
     <main className="h-screen w-screen overflow-hidden relative">
 
-      {/* Header - Mobile */}
-      {isMobile && (
-        <header className="absolute top-0 left-0 right-0 z-10 p-4 flex items-center justify-between pointer-events-none">
-          <div className="pointer-events-auto">
-            <h1 className="text-lg font-black text-white tracking-tighter">
-              THEXEN
-            </h1>
-          </div>
-        </header>
-      )}
+      {/* Header */}
+      <header className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 flex items-center justify-between pointer-events-none">
+        <div className="pointer-events-auto">
+          <h1 className="text-lg md:text-xl font-black text-white tracking-tighter">
+            THEXEN
+          </h1>
+        </div>
+      </header>
 
       {/* Hex Grid - PC or Mobile (with expanding animation) */}
       <div className={`w-full h-full ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}>
