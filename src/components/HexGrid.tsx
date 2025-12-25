@@ -15,12 +15,14 @@ interface HexGridProps {
   onProductClick: (product: Product, position?: ClickPosition) => void;
 }
 
-const ITEM_SIZE = 110;
-const HORIZONTAL_GAP = 24; // 간격 크게
-const VERTICAL_GAP = 20; // 간격 크게
+const ITEM_SIZE = 90; // 원 크기 줄임
+const HORIZONTAL_GAP = 8; // 간격 좁게
+const VERTICAL_GAP = 8; // 간격 좁게
 const HOVER_RADIUS = 200; // 마우스 영향 반경
 const MAX_SCALE = 1.5; // 최대 확대 비율 1.5배
 const MIN_SCALE = 1.0; // 최소 비율
+const LEFT_PADDING = 80; // 왼쪽 여백
+const RIGHT_MARGIN_RATIO = 0.25; // 오른쪽 25% 여백
 
 export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,9 +34,10 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     const updateCols = () => {
       if (containerRef.current) {
         const width = containerRef.current.clientWidth;
-        const availableWidth = width * 0.7; // 좌우 15%씩 여백 제외
+        // 왼쪽 여백 + 오른쪽 25% 여백 제외
+        const availableWidth = width - LEFT_PADDING - (width * RIGHT_MARGIN_RATIO);
         const itemWidth = ITEM_SIZE + HORIZONTAL_GAP;
-        const newCols = Math.floor((availableWidth - ITEM_SIZE / 2) / itemWidth) + 1;
+        const newCols = Math.floor(availableWidth / itemWidth);
         setCols(Math.max(3, newCols));
       }
     };
@@ -130,16 +133,15 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative py-6" style={{ paddingLeft: '15%', paddingRight: '15%' }}>
+      <div className="relative py-6" style={{ paddingLeft: LEFT_PADDING }}>
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}
-            className="flex justify-center"
+            className="flex justify-start"
             style={{
               gap: HORIZONTAL_GAP,
               marginTop: rowIndex === 0 ? 0 : VERTICAL_GAP,
-              paddingLeft: row.isOdd ? (ITEM_SIZE + HORIZONTAL_GAP) / 2 : 0,
-              paddingRight: row.isOdd ? (ITEM_SIZE + HORIZONTAL_GAP) / 2 : 0,
+              marginLeft: row.isOdd ? (ITEM_SIZE + HORIZONTAL_GAP) / 2 : 0,
             }}
           >
             {row.products.map((product) => {
