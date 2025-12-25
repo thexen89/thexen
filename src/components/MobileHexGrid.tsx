@@ -65,9 +65,10 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     if (count === 0) return items;
 
     // 3-4-3-4 패턴 그리드 생성
+    // 간격은 최대 크기 기준으로 고정 (크기 변해도 간격 일정)
     const positions: { baseX: number; baseY: number }[] = [];
-    const baseSpacing = CONFIG.maxSize + CONFIG.gutter;
-    const verticalSpacing = baseSpacing * 0.85;
+    const baseSpacing = CONFIG.maxSize + CONFIG.gutter; // 고정 간격
+    const verticalSpacing = baseSpacing * 0.85; // 고정 세로 간격
 
     for (let row = -Math.floor(ROWS / 2); row <= Math.floor(ROWS / 2); row++) {
       const isOddRow = Math.abs(row) % 2 === 1;
@@ -101,56 +102,32 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     return items;
   }, [products]);
 
-  // 버블 변환 계산 - 가로는 위치 고정, 크기만 변화
-  const calculateBubbleTransform = useCallback((baseX: number, baseY: number, offsetX: number, offsetY: number, centerX: number, centerY: number) => {
-    // X축은 위치 고정, Y축만 스크롤
-    const x = baseX; // 가로 위치는 고정
-    const y = baseY + offsetY; // 세로만 스크롤
+  // 버블 변환 계산 - Y축 거리 기준 크기 변동, 간격은 고정
+  const calculateBubbleTransform = useCallback((baseX: number, baseY: number, offsetX: number, offsetY: number, centerX: number, centerY: number, screenHeight: number) => {
+    const x = baseX;
+    const y = baseY + offsetY;
 
-    // 가로 오프셋으로 크기 변화 계산 (위치 이동 없이)
-    const xInfluence = baseX + offsetX * 0.3; // 가로 드래그는 크기에만 약하게 영향
-
-    // 세로 거리 계산
+    // Y축 거리만으로 크기 계산 (같은 행은 같은 크기)
     const yDistance = Math.abs(y);
-    const yDistanceToMiddle = Math.max(0, yDistance - CONFIG.yRadius);
 
-    // 가로 거리 계산 (크기 변화용)
-    const xDistance = Math.abs(xInfluence);
-    const xDistanceToMiddle = Math.max(0, xDistance - CONFIG.xRadius);
-
-    // 전체 거리 (크기 계산용)
-    const totalDistanceToMiddle = Math.sqrt(
-      Math.pow(xDistanceToMiddle, 2) +
-      Math.pow(yDistanceToMiddle, 2)
-    );
+    const centerZone = 50;
+    const fadeZone = 300;
 
     let size: number;
-    let opacity: number;
 
-    if (totalDistanceToMiddle <= 0) {
+    if (yDistance <= centerZone) {
       size = CONFIG.maxSize;
-      opacity = 1;
-    } else if (totalDistanceToMiddle <= CONFIG.fringeWidth) {
-      const progress = totalDistanceToMiddle / CONFIG.fringeWidth;
-      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 0.8);
-      opacity = 1 - progress * 0.3;
     } else {
-      const outerProgress = Math.min((totalDistanceToMiddle - CONFIG.fringeWidth) / 60, 1);
-      size = CONFIG.minSize * (1 - outerProgress * 0.3);
-      opacity = Math.max(0.7 - outerProgress * 0.6, 0.1);
+      const progress = Math.min((yDistance - centerZone) / fadeZone, 1);
+      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 0.7);
     }
 
-    // 컴팩트니스: 작아진 버블을 중앙으로 살짝 당김
-    let translateY = 0;
-    if (yDistanceToMiddle > 0) {
-      const pullStrength = Math.min(yDistanceToMiddle / CONFIG.fringeWidth, 1) * 15;
-      translateY = -Math.sign(y) * pullStrength;
-    }
+    const opacity = 1;
 
     return {
       screenX: centerX + x,
-      screenY: centerY + y + translateY,
-      size: Math.max(size, 20),
+      screenY: centerY + y,
+      size: Math.max(size, CONFIG.minSize),
       opacity,
       scale: size / CONFIG.maxSize,
     };
@@ -181,7 +158,7 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
 
       // 아이템 그리기 (버블 효과 적용)
       const itemsWithTransform = gridItems.map((item) => {
-        const transformed = calculateBubbleTransform(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY);
+        const transformed = calculateBubbleTransform(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY, h);
         return { item, ...transformed };
       });
 
@@ -234,13 +211,13 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
         }
       });
 
-      // 원형 테두리 밖만 완전히 검은색으로 마스킹 (안쪽은 100% 선명)
-      const maskRadius = Math.min(w, h) * 0.48;
+      // 사각형 마스크 - 상하 10%씩만 검게 (80% 가시 영역)
+      const maskHeight = h * 0.1;
       ctx.fillStyle = '#000000';
-      ctx.beginPath();
-      ctx.rect(0, 0, w, h);
-      ctx.arc(centerX, centerY, maskRadius, 0, Math.PI * 2, true);
-      ctx.fill();
+      // 상단 마스크
+      ctx.fillRect(0, 0, w, maskHeight);
+      // 하단 마스크
+      ctx.fillRect(0, h - maskHeight, w, maskHeight);
     };
   }, [gridItems, dimensions, dpr, calculateBubbleTransform]);
 
@@ -358,7 +335,7 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
 
     // 스케일 큰 것부터 검사 (위에 그려진 것이 우선)
     const itemsWithTransform = gridItems.map((item) => {
-      const transformed = calculateBubbleTransform(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY);
+      const transformed = calculateBubbleTransform(item.baseX, item.baseY, offset.x, offset.y, centerX, centerY, h);
       return { item, ...transformed };
     }).sort((a, b) => b.size - a.size);
 
