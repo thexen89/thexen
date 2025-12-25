@@ -16,10 +16,10 @@ interface HexGridProps {
 }
 
 const ITEM_SIZE = 110;
-const HORIZONTAL_GAP = 12;
-const VERTICAL_GAP = 12;
+const HORIZONTAL_GAP = 24; // 간격 크게
+const VERTICAL_GAP = 20; // 간격 크게
 const HOVER_RADIUS = 200; // 마우스 영향 반경
-const MAX_SCALE = 1.25; // 최대 확대 비율
+const MAX_SCALE = 1.5; // 최대 확대 비율 1.5배
 const MIN_SCALE = 1.0; // 최소 비율
 
 export default function HexGrid({ products, onProductClick }: HexGridProps) {
@@ -32,9 +32,10 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
     const updateCols = () => {
       if (containerRef.current) {
         const width = containerRef.current.clientWidth;
+        const availableWidth = width * 0.7; // 좌우 15%씩 여백 제외
         const itemWidth = ITEM_SIZE + HORIZONTAL_GAP;
-        const newCols = Math.floor((width - ITEM_SIZE / 2) / itemWidth) + 1;
-        setCols(Math.max(4, newCols));
+        const newCols = Math.floor((availableWidth - ITEM_SIZE / 2) / itemWidth) + 1;
+        setCols(Math.max(3, newCols));
       }
     };
 
@@ -129,7 +130,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative py-6 px-8">
+      <div className="relative py-6" style={{ paddingLeft: '15%', paddingRight: '15%' }}>
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}

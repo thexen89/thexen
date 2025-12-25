@@ -11,8 +11,8 @@ interface AdminHexGridProps {
 }
 
 const ITEM_SIZE = 110;
-const HORIZONTAL_GAP = 12;
-const VERTICAL_GAP = 12;
+const HORIZONTAL_GAP = 24; // 간격 크게
+const VERTICAL_GAP = 20; // 간격 크게
 
 export default function AdminHexGrid({ products, onReorder, onProductClick }: AdminHexGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,9 +24,10 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
     const updateCols = () => {
       if (containerRef.current) {
         const width = containerRef.current.clientWidth;
+        const availableWidth = width * 0.7; // 좌우 15%씩 여백 제외
         const itemWidth = ITEM_SIZE + HORIZONTAL_GAP;
-        const newCols = Math.floor((width - ITEM_SIZE / 2) / itemWidth) + 1;
-        setCols(Math.max(4, newCols));
+        const newCols = Math.floor((availableWidth - ITEM_SIZE / 2) / itemWidth) + 1;
+        setCols(Math.max(3, newCols));
       }
     };
 
@@ -131,7 +132,7 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
         <p className="text-white/50 text-xs">드래그하여 순서 변경 | 클릭하여 수정</p>
       </div>
 
-      <div className="relative py-6 px-8 pt-24">
+      <div className="relative py-6 pt-24" style={{ paddingLeft: '15%', paddingRight: '15%' }}>
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}
@@ -161,8 +162,8 @@ export default function AdminHexGrid({ products, onReorder, onProductClick }: Ad
                   className={`
                     group relative rounded-full overflow-hidden flex-shrink-0 cursor-pointer
                     transition-all duration-200 ease-out
-                    ${isDragged ? 'opacity-50 scale-90' : 'hover:scale-[1.15] hover:z-20'}
-                    ${isDragOver ? 'ring-4 ring-white scale-110' : ''}
+                    ${isDragged ? 'opacity-50 scale-90' : 'hover:scale-[1.5] hover:z-20'}
+                    ${isDragOver ? 'ring-4 ring-white scale-[1.3]' : ''}
                   `}
                   style={{
                     width: ITEM_SIZE,
