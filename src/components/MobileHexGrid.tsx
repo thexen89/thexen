@@ -23,7 +23,7 @@ interface GridItem {
 // 애플워치 스타일 버블 UI 설정
 const CONFIG = {
   maxSize: 76,       // 최대 크기
-  minSize: 36,       // 최소 크기
+  minSize: 20,       // 최소 크기 (더 작게)
   xRadius: 40,       // 가로 중앙 영역 (좁게)
   yRadius: 80,       // 세로 중앙 영역 (넓게)
   fringeWidth: 70,   // 페이드 영역 너비
@@ -110,8 +110,8 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
     // Y축 거리만으로 크기 계산 (같은 행은 같은 크기)
     const yDistance = Math.abs(y);
 
-    const centerZone = 50;
-    const fadeZone = 300;
+    const centerZone = 40;
+    const fadeZone = 250;
 
     let size: number;
 
@@ -119,7 +119,8 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
       size = CONFIG.maxSize;
     } else {
       const progress = Math.min((yDistance - centerZone) / fadeZone, 1);
-      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 0.7);
+      // 더 급격한 감소 곡선 (끝으로 갈수록 빠르게 작아짐)
+      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 0.5);
     }
 
     const opacity = 1;
