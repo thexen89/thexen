@@ -5,6 +5,7 @@ import HexGrid from '@/components/HexGrid';
 import MobileHexGrid from '@/components/MobileHexGrid';
 import Modal from '@/components/Modal';
 import { Product } from '@/lib/types';
+import { useFullscreenLandscape } from '@/hooks/useFullscreenLandscape';
 
 type ViewState = 'landing' | 'collapsing' | 'expanding' | 'grid';
 
@@ -21,6 +22,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [viewState, setViewState] = useState<ViewState>('landing');
+  const { isLandscape, showRotatePrompt, requestFullscreenLandscape, dismissRotatePrompt } = useFullscreenLandscape();
 
   // 모바일 감지
   useEffect(() => {
@@ -47,7 +49,12 @@ export default function Home() {
   }, []);
 
   // 랜딩 클릭 → 수렴 → 펼침 애니메이션
-  const handleLandingClick = useCallback(() => {
+  const handleLandingClick = useCallback(async () => {
+    // 모바일에서 전체화면 + 가로모드 요청
+    if (isMobile) {
+      await requestFullscreenLandscape();
+    }
+
     setViewState('collapsing');
 
     setTimeout(() => {
@@ -57,7 +64,7 @@ export default function Home() {
         setViewState('grid');
       }, 600);
     }, 400);
-  }, []);
+  }, [isMobile, requestFullscreenLandscape]);
 
   // 제품 클릭 핸들러 (위치 정보 포함)
   const handleProductClick = useCallback((product: Product, position?: ClickPosition) => {
@@ -174,12 +181,53 @@ export default function Home() {
 
       {/* Hex Grid - PC or Mobile (with expanding animation) */}
       <div className={`w-full h-full ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}>
-        {isMobile ? (
+        {isMobile && !isLandscape ? (
           <MobileHexGrid products={products} onProductClick={handleProductClick} />
         ) : (
           <HexGrid products={products} onProductClick={handleProductClick} />
         )}
       </div>
+
+      {/* 회전 안내 오버레이 - 모바일 세로모드에서 표시 */}
+      {showRotatePrompt && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-8">
+          {/* 회전 아이콘 */}
+          <div className="mb-8 relative">
+            <svg
+              className="w-24 h-24 text-white animate-pulse"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            {/* 폰 아이콘 */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-6 h-10 border-2 border-white rounded-lg rotate-90" />
+            </div>
+          </div>
+
+          <h2 className="text-white text-xl font-bold mb-2">
+            가로로 회전해주세요
+          </h2>
+          <p className="text-white/50 text-sm text-center mb-8">
+            더 나은 포트폴리오 경험을 위해<br />
+            기기를 가로로 돌려주세요
+          </p>
+
+          <button
+            onClick={dismissRotatePrompt}
+            className="px-6 py-3 border border-white/30 text-white/70 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            이대로 보기
+          </button>
+        </div>
+      )}
 
       {/* Product Modal */}
       <Modal
