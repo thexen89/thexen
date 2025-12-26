@@ -19,7 +19,7 @@ const ITEM_SIZE = 90; // 원 크기
 const HORIZONTAL_GAP = 60; // 가로 간격
 const VERTICAL_GAP = -12; // 세로 간격
 const HOVER_RADIUS = 200; // 마우스 영향 반경
-const MAX_SCALE = 1.5; // 최대 확대 비율 1.5배
+const MAX_SCALE = 2; // 최대 확대 비율 1.5배
 const MIN_SCALE = 1.0; // 최소 비율
 const PADDING = 60; // 좌우 동일 여백
 const MAX_COLS = 6; // 최대 열 개수 (B 스타일 - 한 줄에 6개)
@@ -146,7 +146,6 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
           >
             {row.products.map((product) => {
               const scale = getItemScale(itemRefs.current.get(product.id) || null);
-              const isHovered = scale > 1.05;
 
               return (
                 <button
@@ -159,9 +158,9 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
                   style={{
                     width: ITEM_SIZE,
                     height: ITEM_SIZE,
-                    zIndex: isHovered ? 100 : rows.length - rowIndex,
+                    zIndex: Math.round(scale * 100),
                     transform: `scale(${scale})`,
-                    transition: 'transform 0.15s ease-out',
+                    transition: 'transform 0.15s ease-out, z-index 0s',
                   }}
                 >
                   {/* 이미지 */}
