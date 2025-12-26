@@ -16,13 +16,13 @@ interface HexGridProps {
 }
 
 const ITEM_SIZE = 90; // 원 크기
-const HORIZONTAL_GAP = 20; // 가로 간격
-const VERTICAL_GAP = 12; // 세로 간격
+const HORIZONTAL_GAP = 60; // 가로 간격
+const VERTICAL_GAP = -12; // 세로 간격
 const HOVER_RADIUS = 200; // 마우스 영향 반경
 const MAX_SCALE = 1.5; // 최대 확대 비율 1.5배
 const MIN_SCALE = 1.0; // 최소 비율
 const PADDING = 60; // 좌우 동일 여백
-const MAX_COLS = 10; // 최대 열 개수 (오른쪽 여백 생성용)
+const MAX_COLS = 6; // 최대 열 개수 (B 스타일 - 한 줄에 6개)
 
 export default function HexGrid({ products, onProductClick }: HexGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,7 +94,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
 
     while (index < sortedProducts.length) {
       const isOdd = rowIndex % 2 === 1;
-      const rowCols = isOdd ? cols - 1 : cols;
+      const rowCols = isOdd ? cols + 1 : cols;
       const rowProducts = sortedProducts.slice(index, index + rowCols);
 
       if (rowProducts.length > 0) {
@@ -141,7 +141,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
             style={{
               gap: HORIZONTAL_GAP,
               marginTop: rowIndex === 0 ? 0 : VERTICAL_GAP,
-              marginLeft: row.isOdd ? (ITEM_SIZE + HORIZONTAL_GAP) / 2 : 0,
+              marginLeft: row.isOdd ? -(ITEM_SIZE + HORIZONTAL_GAP) / 2 : 0,
             }}
           >
             {row.products.map((product) => {
