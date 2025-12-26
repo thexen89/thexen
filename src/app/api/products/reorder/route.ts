@@ -10,14 +10,17 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Invalid products data' }, { status: 400 });
     }
 
-    // Update priorities using transaction
+    // Update priorities using transaction with extended timeout
     await prisma.$transaction(
       products.map((product: { id: string; priority: number }) =>
         prisma.product.update({
           where: { id: product.id },
           data: { priority: product.priority },
         })
-      )
+      ),
+      {
+        timeout: 30000, // 30초 타임아웃
+      }
     );
 
     return NextResponse.json({ success: true });
