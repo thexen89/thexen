@@ -5,6 +5,16 @@ import { Product } from '@/lib/types';
 import AdminHexGrid from '@/components/AdminHexGrid';
 import AdminMobileHexGrid from '@/components/AdminMobileHexGrid';
 
+type EffectType = 'snow' | 'cherry' | 'leaves' | 'fireworks' | null;
+
+const EFFECT_OPTIONS: { value: EffectType; label: string; icon: string }[] = [
+  { value: null, label: '없음', icon: '⊘' },
+  { value: 'snow', label: '눈', icon: '❄️' },
+  { value: 'cherry', label: '벚꽃', icon: '🌸' },
+  { value: 'leaves', label: '낙엽', icon: '🍂' },
+  { value: 'fireworks', label: '불꽃놀이', icon: '🎆' },
+];
+
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,6 +27,10 @@ export default function AdminPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [seasonalEffect, setSeasonalEffect] = useState<EffectType>(null);
+  const [effectEnabled, setEffectEnabled] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 모바일 감지
@@ -41,7 +55,38 @@ export default function AdminPage() {
 
   useEffect(() => {
     loadProducts();
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      setSeasonalEffect(data.seasonalEffect as EffectType);
+      setEffectEnabled(data.effectEnabled);
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
+
+  const saveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seasonalEffect, effectEnabled }),
+      });
+      if (!res.ok) throw new Error('Failed to save settings');
+      showMessage('success', '시즌 효과 설정이 저장되었습니다.');
+      setIsSettingsOpen(false);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      showMessage('error', '설정 저장에 실패했습니다.');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -252,6 +297,19 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
+            {/* 시즌 효과 설정 버튼 */}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm flex items-center gap-1.5 ${
+                effectEnabled && seasonalEffect
+                  ? 'bg-white/20 text-white'
+                  : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <span>{EFFECT_OPTIONS.find(o => o.value === seasonalEffect)?.icon || '⚙️'}</span>
+              <span className="hidden md:inline">시즌 효과</span>
+            </button>
+
             {/* View Toggle - PC only */}
             {!isMobile && (
               <div className="flex border border-white/20 rounded-lg p-0.5">
@@ -731,6 +789,102 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">시즌 효과 설정</h3>
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-white/50 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* 효과 활성화 토글 */}
+              <div className="flex items-center justify-between py-3 px-4 bg-white/5 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-white/70">효과 활성화</p>
+                  <p className="text-xs text-white/40 mt-0.5">메인페이지에 시즌 효과를 표시합니다</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEffectEnabled(!effectEnabled)}
+                  className={`
+                    relative w-12 h-6 rounded-full transition-colors duration-200
+                    ${effectEnabled ? 'bg-white' : 'bg-white/20'}
+                  `}
+                >
+                  <span
+                    className={`
+                      absolute top-1 left-1 w-4 h-4 rounded-full transition-transform duration-200
+                      ${effectEnabled ? 'translate-x-6 bg-black' : 'translate-x-0 bg-white/50'}
+                    `}
+                  />
+                </button>
+              </div>
+
+              {/* 효과 선택 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  효과 종류
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {EFFECT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value ?? 'none'}
+                      onClick={() => setSeasonalEffect(option.value)}
+                      className={`
+                        px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3
+                        ${seasonalEffect === option.value
+                          ? 'border-white bg-white/10 text-white'
+                          : 'border-white/10 text-white/50 hover:border-white/30 hover:text-white'
+                        }
+                      `}
+                    >
+                      <span className="text-2xl">{option.icon}</span>
+                      <span className="text-sm font-medium">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 미리보기 안내 */}
+              {effectEnabled && seasonalEffect && (
+                <div className="py-3 px-4 bg-white/5 rounded-lg text-center">
+                  <p className="text-sm text-white/50">
+                    저장 후 메인페이지에서 <span className="text-white font-medium">{EFFECT_OPTIONS.find(o => o.value === seasonalEffect)?.label}</span> 효과를 확인할 수 있습니다.
+                  </p>
+                </div>
+              )}
+
+              {/* 버튼 */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={saveSettings}
+                  disabled={isSavingSettings}
+                  className="flex-1 px-6 py-2 bg-white hover:bg-white/90 text-black font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {isSavingSettings ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

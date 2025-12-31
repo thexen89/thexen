@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import HexGrid from '@/components/HexGrid';
 import MobileHexGrid from '@/components/MobileHexGrid';
 import Modal from '@/components/Modal';
+import SeasonalEffects from '@/components/SeasonalEffects';
 import { Product } from '@/lib/types';
 import { useFullscreenLandscape } from '@/hooks/useFullscreenLandscape';
 
 type ViewState = 'landing' | 'collapsing' | 'expanding' | 'grid';
+type EffectType = 'snow' | 'cherry' | 'leaves' | 'fireworks' | null;
 
 interface ClickPosition {
   x: number;
@@ -22,6 +24,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [viewState, setViewState] = useState<ViewState>('landing');
+  const [seasonalEffect, setSeasonalEffect] = useState<EffectType>(null);
+  const [effectEnabled, setEffectEnabled] = useState(false);
   const { isLandscape, showRotatePrompt, requestFullscreenLandscape, dismissRotatePrompt } = useFullscreenLandscape();
 
   // 모바일 감지
@@ -45,6 +49,19 @@ export default function Home() {
       .catch((err) => {
         console.error('Failed to load products:', err);
         setIsLoading(false);
+      });
+  }, []);
+
+  // 시즌 효과 설정 로드
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        setSeasonalEffect(data.seasonalEffect as EffectType);
+        setEffectEnabled(data.effectEnabled);
+      })
+      .catch((err) => {
+        console.error('Failed to load settings:', err);
       });
   }, []);
 
@@ -81,6 +98,7 @@ export default function Home() {
   if (isLoading) {
     return (
       <div className="h-screen w-screen bg-black flex items-center justify-center">
+        <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
         </div>
@@ -95,6 +113,9 @@ export default function Home() {
         className="h-screen w-screen overflow-hidden relative bg-black cursor-pointer"
         onClick={viewState === 'landing' ? handleLandingClick : undefined}
       >
+        {/* 시즌 효과 */}
+        <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
+
         {/* 노이즈 텍스처 */}
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -167,6 +188,8 @@ export default function Home() {
 
   return (
     <main className="h-screen w-screen overflow-hidden relative">
+      {/* 시즌 효과 */}
+      <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
 
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 flex items-center justify-between pointer-events-none">
