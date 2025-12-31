@@ -17,6 +17,8 @@ interface ClickPosition {
   size: number;
 }
 
+const HEADER_HEIGHT = 60; // 헤더 높이 (px)
+
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -26,6 +28,7 @@ export default function Home() {
   const [viewState, setViewState] = useState<ViewState>('landing');
   const [seasonalEffect, setSeasonalEffect] = useState<EffectType>(null);
   const [effectEnabled, setEffectEnabled] = useState(false);
+  const [showCompanyInfo, setShowCompanyInfo] = useState(false);
   const { isLandscape, showRotatePrompt, requestFullscreenLandscape, dismissRotatePrompt } = useFullscreenLandscape();
 
   // 모바일 감지
@@ -187,21 +190,33 @@ export default function Home() {
   }
 
   return (
-    <main className="h-screen w-screen overflow-hidden relative">
+    <main className="h-screen w-screen overflow-hidden relative flex flex-col">
       {/* 시즌 효과 */}
       <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
 
-      {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 flex items-center justify-between pointer-events-none">
-        <div className="pointer-events-auto">
-          <h1 className="text-lg md:text-xl font-black text-white tracking-tighter">
-            THEXEN
-          </h1>
-        </div>
+      {/* Header - 고정 영역 */}
+      <header
+        className="flex-shrink-0 z-20 px-4 md:px-6 flex items-center justify-between bg-black border-b border-white/10"
+        style={{ height: HEADER_HEIGHT }}
+      >
+        <button
+          onClick={() => setShowCompanyInfo(true)}
+          className="text-lg md:text-xl font-black text-white tracking-tighter hover:text-white/80 transition-colors"
+        >
+          THEXEN
+        </button>
+        <a
+          href="#"
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          Shop
+        </a>
       </header>
 
       {/* Hex Grid - PC or Mobile (with expanding animation) */}
-      <div className={`w-full h-full ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}>
+      <div
+        className={`flex-1 overflow-hidden ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}
+      >
         {isMobile && !isLandscape ? (
           <MobileHexGrid products={products} onProductClick={handleProductClick} />
         ) : (
@@ -257,6 +272,82 @@ export default function Home() {
         originPosition={clickPosition}
       />
 
+      {/* Company Info Modal */}
+      {showCompanyInfo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowCompanyInfo(false)}
+        >
+          <div
+            className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">THEXEN</h2>
+              <button
+                onClick={() => setShowCompanyInfo(false)}
+                className="text-white/50 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 콘텐츠 */}
+            <div className="p-6 space-y-6">
+              {/* 회사 소개 */}
+              <div>
+                <h3 className="text-sm font-medium text-white/50 mb-2">회사 소개</h3>
+                <p className="text-white/80 leading-relaxed">
+                  THEXEN은 프리미엄 판촉물 및 기업 굿즈 전문 제조업체입니다.
+                  20년 이상의 경험을 바탕으로 고품질 맞춤형 제품을 제공합니다.
+                </p>
+              </div>
+
+              {/* 연락처 */}
+              <div>
+                <h3 className="text-sm font-medium text-white/50 mb-2">연락처</h3>
+                <div className="space-y-2 text-white/80">
+                  <p className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    02-1234-5678
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    contact@thexen.co.kr
+                  </p>
+                </div>
+              </div>
+
+              {/* 주소 */}
+              <div>
+                <h3 className="text-sm font-medium text-white/50 mb-2">주소</h3>
+                <p className="text-white/80 flex items-start gap-2">
+                  <svg className="w-4 h-4 text-white/50 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  서울특별시 강남구 테헤란로 123, 더젠빌딩 5층
+                </p>
+              </div>
+
+              {/* 영업시간 */}
+              <div>
+                <h3 className="text-sm font-medium text-white/50 mb-2">영업시간</h3>
+                <p className="text-white/80">
+                  평일 09:00 - 18:00 (주말 및 공휴일 휴무)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes expand-from-center {

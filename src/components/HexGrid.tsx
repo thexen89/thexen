@@ -79,7 +79,7 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
       ref={containerRef}
       className="w-full h-full overflow-y-auto bg-black"
     >
-      <div className="relative mx-auto" style={{ width: 'fit-content', paddingTop: '10vh', paddingBottom: '10vh' }}>
+      <div className="relative mx-auto" style={{ width: 'fit-content', paddingTop: '40px', paddingBottom: '10vh' }}>
         {rows.map((row, rowIndex) => (
           <div
             key={rowIndex}
@@ -123,11 +123,9 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
                     className="absolute inset-0 rounded-full pointer-events-none transition-all duration-200"
                     style={{
                       boxShadow: isHovered
-                        ? '0 8px 30px rgba(0, 0, 0, 0.6), 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 20px 5px rgba(233, 69, 96, 0.4)'
-                        : '0 2px 8px rgba(0, 0, 0, 0.3)',
-                      border: isHovered
-                        ? '2px solid #e94560'
-                        : '1px solid rgba(255, 255, 255, 0.15)',
+                        ? '0 12px 40px rgba(0, 0, 0, 0.8), 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 60px rgba(0, 0, 0, 0.4)'
+                        : '0 4px 20px rgba(0, 0, 0, 0.6), 0 2px 10px rgba(0, 0, 0, 0.4)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
                     }}
                   />
                 </button>
