@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import HexGrid from '@/components/HexGrid';
 import MobileHexGrid from '@/components/MobileHexGrid';
 import Modal from '@/components/Modal';
+import CompanyModal from '@/components/CompanyModal';
 import SeasonalEffects from '@/components/SeasonalEffects';
 import { Product } from '@/lib/types';
 import { useFullscreenLandscape } from '@/hooks/useFullscreenLandscape';
@@ -29,7 +30,9 @@ export default function Home() {
   const [viewState, setViewState] = useState<ViewState>('landing');
   const [seasonalEffect, setSeasonalEffect] = useState<EffectType>(null);
   const [effectEnabled, setEffectEnabled] = useState(false);
-  const [showCompanyInfo, setShowCompanyInfo] = useState(false);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [companyImages, setCompanyImages] = useState<string[]>([]);
+  const [companyDescription, setCompanyDescription] = useState<string | null>(null);
   const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
   const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gridCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -59,13 +62,15 @@ export default function Home() {
       });
   }, []);
 
-  // 시즌 효과 설정 로드
+  // 시즌 효과 및 회사 정보 설정 로드
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
         setSeasonalEffect(data.seasonalEffect as EffectType);
         setEffectEnabled(data.effectEnabled);
+        setCompanyImages(data.companyImages || []);
+        setCompanyDescription(data.companyDescription || null);
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -107,6 +112,7 @@ export default function Home() {
     setSelectedProduct(null);
     setClickPosition(null);
     setGridIdleCountdown(null);
+    setShowCompanyModal(false);
     setViewState('landing');
   }, []);
 
@@ -138,7 +144,7 @@ export default function Home() {
   // 그리드 화면 idle 타이머 - viewState가 grid일 때만 활성화
   useEffect(() => {
     // 모달이 열려있으면 그리드 타이머 비활성화 (모달이 자체 타이머 가짐)
-    if (viewState !== 'grid' || selectedProduct) {
+    if (viewState !== 'grid' || selectedProduct || showCompanyModal) {
       if (gridIdleTimerRef.current) {
         clearTimeout(gridIdleTimerRef.current);
       }
@@ -174,7 +180,7 @@ export default function Home() {
         clearInterval(gridCountdownIntervalRef.current);
       }
     };
-  }, [viewState, selectedProduct, resetGridIdleTimer]);
+  }, [viewState, selectedProduct, showCompanyModal, resetGridIdleTimer]);
 
   // 그리드 카운트다운이 끝나면 랜딩으로 이동
   useEffect(() => {
@@ -288,8 +294,8 @@ export default function Home() {
         style={{ height: HEADER_HEIGHT }}
       >
         <button
-          onClick={() => setShowCompanyInfo(true)}
-          className="text-lg md:text-xl font-black text-white tracking-tighter hover:text-white/80 transition-colors"
+          onClick={() => setShowCompanyModal(true)}
+          className="text-lg md:text-xl font-black text-white tracking-tighter transition-colors hover:text-white/80 cursor-pointer"
         >
           THEXEN
         </button>
@@ -361,82 +367,14 @@ export default function Home() {
         originPosition={clickPosition}
       />
 
-      {/* Company Info Modal */}
-      {showCompanyInfo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          onClick={() => setShowCompanyInfo(false)}
-        >
-          <div
-            className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 헤더 */}
-            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">THEXEN</h2>
-              <button
-                onClick={() => setShowCompanyInfo(false)}
-                className="text-white/50 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* 콘텐츠 */}
-            <div className="p-6 space-y-6">
-              {/* 회사 소개 */}
-              <div>
-                <h3 className="text-sm font-medium text-white/50 mb-2">회사 소개</h3>
-                <p className="text-white/80 leading-relaxed">
-                  THEXEN은 프리미엄 판촉물 및 기업 굿즈 전문 제조업체입니다.
-                  20년 이상의 경험을 바탕으로 고품질 맞춤형 제품을 제공합니다.
-                </p>
-              </div>
-
-              {/* 연락처 */}
-              <div>
-                <h3 className="text-sm font-medium text-white/50 mb-2">연락처</h3>
-                <div className="space-y-2 text-white/80">
-                  <p className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    02-1234-5678
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    contact@thexen.co.kr
-                  </p>
-                </div>
-              </div>
-
-              {/* 주소 */}
-              <div>
-                <h3 className="text-sm font-medium text-white/50 mb-2">주소</h3>
-                <p className="text-white/80 flex items-start gap-2">
-                  <svg className="w-4 h-4 text-white/50 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  서울특별시 강남구 테헤란로 123, 더젠빌딩 5층
-                </p>
-              </div>
-
-              {/* 영업시간 */}
-              <div>
-                <h3 className="text-sm font-medium text-white/50 mb-2">영업시간</h3>
-                <p className="text-white/80">
-                  평일 09:00 - 18:00 (주말 및 공휴일 휴무)
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Company Modal */}
+      <CompanyModal
+        isOpen={showCompanyModal}
+        onClose={() => setShowCompanyModal(false)}
+        onReturnToLanding={handleReturnToLanding}
+        images={companyImages}
+        description={companyDescription}
+      />
 
       <style jsx>{`
         @keyframes expand-from-center {

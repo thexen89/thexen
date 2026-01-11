@@ -17,6 +17,8 @@ export async function GET() {
           id: DEFAULT_ID,
           seasonalEffect: null,
           effectEnabled: false,
+          companyImages: [],
+          companyDescription: null,
         },
       });
     }
@@ -35,18 +37,24 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { seasonalEffect, effectEnabled } = body;
+    const { seasonalEffect, effectEnabled, companyImages, companyDescription } = body;
+
+    // 업데이트할 데이터 구성 (전달된 필드만 업데이트)
+    const updateData: Record<string, unknown> = {};
+    if (seasonalEffect !== undefined) updateData.seasonalEffect = seasonalEffect;
+    if (effectEnabled !== undefined) updateData.effectEnabled = effectEnabled;
+    if (companyImages !== undefined) updateData.companyImages = companyImages;
+    if (companyDescription !== undefined) updateData.companyDescription = companyDescription;
 
     const settings = await prisma.siteSettings.upsert({
       where: { id: DEFAULT_ID },
-      update: {
-        seasonalEffect,
-        effectEnabled,
-      },
+      update: updateData,
       create: {
         id: DEFAULT_ID,
-        seasonalEffect,
-        effectEnabled,
+        seasonalEffect: seasonalEffect ?? null,
+        effectEnabled: effectEnabled ?? false,
+        companyImages: companyImages ?? [],
+        companyDescription: companyDescription ?? null,
       },
     });
 

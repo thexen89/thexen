@@ -1,5 +1,9 @@
 import path from 'node:path';
 import { defineConfig } from 'prisma/config';
+import * as dotenv from 'dotenv';
+
+// .env 파일 로드
+dotenv.config();
 
 export default defineConfig({
   earlyAccess: true,
@@ -15,6 +19,6 @@ export default defineConfig({
   },
 
   datasource: {
-    url: process.env.DATABASE_URL!,
+    url: process.env.DATABASE_URL || '',
   },
 });
