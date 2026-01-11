@@ -33,6 +33,9 @@ export default function Home() {
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [companyImages, setCompanyImages] = useState<string[]>([]);
   const [companyDescription, setCompanyDescription] = useState<string | null>(null);
+  const [landingLogoImage, setLandingLogoImage] = useState<string | null>(null);
+  const [landingBackgroundImage, setLandingBackgroundImage] = useState<string | null>(null);
+  const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
   const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
   const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gridCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,7 +65,7 @@ export default function Home() {
       });
   }, []);
 
-  // 시즌 효과 및 회사 정보 설정 로드
+  // 시즌 효과 및 회사 정보, 랜딩페이지 설정 로드
   useEffect(() => {
     fetch('/api/settings')
       .then((res) => res.json())
@@ -71,6 +74,9 @@ export default function Home() {
         setEffectEnabled(data.effectEnabled);
         setCompanyImages(data.companyImages || []);
         setCompanyDescription(data.companyDescription || null);
+        setLandingLogoImage(data.landingLogoImage || null);
+        setLandingBackgroundImage(data.landingBackgroundImage || null);
+        setLandingBackgroundType(data.landingBackgroundType || 'tile');
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -210,16 +216,35 @@ export default function Home() {
         className="h-screen w-screen overflow-hidden relative bg-black cursor-pointer"
         onClick={viewState === 'landing' ? handleLandingClick : undefined}
       >
+        {/* 커스텀 배경 이미지 */}
+        {landingBackgroundImage && (
+          <div
+            className="absolute inset-0"
+            style={landingBackgroundType === 'tile' ? {
+              backgroundImage: `url(${landingBackgroundImage})`,
+              backgroundRepeat: 'repeat',
+              backgroundSize: '100px 100px',
+            } : {
+              backgroundImage: `url(${landingBackgroundImage})`,
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+        )}
+
         {/* 시즌 효과 */}
         <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
 
-        {/* 노이즈 텍스처 */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          }}
-        />
+        {/* 노이즈 텍스처 - 커스텀 배경이 없을 때만 표시 */}
+        {!landingBackgroundImage && (
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            }}
+          />
+        )}
 
         {/* 메인 콘텐츠 */}
         <div
@@ -227,28 +252,40 @@ export default function Home() {
             viewState === 'collapsing' ? 'scale-50 opacity-0' : ''
           }`}
         >
-          {/* 로고 */}
-          <div className="relative">
-            <h1 className="text-7xl md:text-[12rem] font-black text-white tracking-tighter leading-none">
-              THEXEN
-            </h1>
-            {/* 글리치 효과 레이어 */}
-            <h1
-              className="absolute inset-0 text-7xl md:text-[12rem] font-black tracking-tighter leading-none text-white/10 blur-[2px]"
-              style={{ transform: 'translate(4px, 4px)' }}
-            >
-              THEXEN
-            </h1>
-          </div>
+          {/* 로고 - 커스텀 이미지 또는 기본 텍스트 */}
+          {landingLogoImage ? (
+            <div className="relative">
+              <img
+                src={landingLogoImage}
+                alt="Logo"
+                className="max-h-32 md:max-h-48 object-contain"
+              />
+            </div>
+          ) : (
+            <div className="relative">
+              <h1 className="text-7xl md:text-[12rem] font-black text-white tracking-tighter leading-none">
+                THEXEN
+              </h1>
+              {/* 글리치 효과 레이어 */}
+              <h1
+                className="absolute inset-0 text-7xl md:text-[12rem] font-black tracking-tighter leading-none text-white/10 blur-[2px]"
+                style={{ transform: 'translate(4px, 4px)' }}
+              >
+                THEXEN
+              </h1>
+            </div>
+          )}
 
-          {/* 서브 텍스트 */}
-          <div className="mt-6 md:mt-8 flex items-center gap-4">
-            <div className="h-[1px] w-12 bg-white/30" />
-            <p className="text-white/50 text-xs md:text-sm tracking-[0.3em] uppercase">
-              Premium Goods Manufacturing
-            </p>
-            <div className="h-[1px] w-12 bg-white/30" />
-          </div>
+          {/* 서브 텍스트 - 커스텀 로고가 없을 때만 표시 */}
+          {!landingLogoImage && (
+            <div className="mt-6 md:mt-8 flex items-center gap-4">
+              <div className="h-[1px] w-12 bg-white/30" />
+              <p className="text-white/50 text-xs md:text-sm tracking-[0.3em] uppercase">
+                Premium Goods Manufacturing
+              </p>
+              <div className="h-[1px] w-12 bg-white/30" />
+            </div>
+          )}
 
           {/* 클릭 유도 */}
           <div className="absolute bottom-16 md:bottom-20 flex flex-col items-center gap-3">
@@ -266,11 +303,15 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 코너 장식 */}
-        <div className={`absolute top-8 left-8 w-16 h-16 border-l border-t border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
-        <div className={`absolute top-8 right-8 w-16 h-16 border-r border-t border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
-        <div className={`absolute bottom-8 left-8 w-16 h-16 border-l border-b border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
-        <div className={`absolute bottom-8 right-8 w-16 h-16 border-r border-b border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+        {/* 코너 장식 - 커스텀 배경이 없을 때만 표시 */}
+        {!landingBackgroundImage && (
+          <>
+            <div className={`absolute top-8 left-8 w-16 h-16 border-l border-t border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+            <div className={`absolute top-8 right-8 w-16 h-16 border-r border-t border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+            <div className={`absolute bottom-8 left-8 w-16 h-16 border-l border-b border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+            <div className={`absolute bottom-8 right-8 w-16 h-16 border-r border-b border-white/10 transition-opacity duration-300 ${viewState === 'collapsing' ? 'opacity-0' : ''}`} />
+          </>
+        )}
 
         {/* 수렴 시 중앙 점 */}
         {viewState === 'collapsing' && (

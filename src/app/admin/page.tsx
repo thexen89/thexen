@@ -36,8 +36,17 @@ export default function AdminPage() {
   const [companyDescription, setCompanyDescription] = useState('');
   const [isUploadingCompanyImage, setIsUploadingCompanyImage] = useState(false);
   const [isSavingCompanySettings, setIsSavingCompanySettings] = useState(false);
+  const [isLandingSettingsOpen, setIsLandingSettingsOpen] = useState(false);
+  const [landingLogoImage, setLandingLogoImage] = useState<string | null>(null);
+  const [landingBackgroundImage, setLandingBackgroundImage] = useState<string | null>(null);
+  const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
+  const [isUploadingLandingLogo, setIsUploadingLandingLogo] = useState(false);
+  const [isUploadingLandingBg, setIsUploadingLandingBg] = useState(false);
+  const [isSavingLandingSettings, setIsSavingLandingSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const companyFileInputRef = useRef<HTMLInputElement>(null);
+  const landingLogoInputRef = useRef<HTMLInputElement>(null);
+  const landingBgInputRef = useRef<HTMLInputElement>(null);
 
   // 모바일 감지
   useEffect(() => {
@@ -72,6 +81,9 @@ export default function AdminPage() {
       setEffectEnabled(data.effectEnabled);
       setCompanyImages(data.companyImages || []);
       setCompanyDescription(data.companyDescription || '');
+      setLandingLogoImage(data.landingLogoImage || null);
+      setLandingBackgroundImage(data.landingBackgroundImage || null);
+      setLandingBackgroundType(data.landingBackgroundType || 'tile');
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -112,6 +124,25 @@ export default function AdminPage() {
       showMessage('error', '회사 정보 저장에 실패했습니다.');
     } finally {
       setIsSavingCompanySettings(false);
+    }
+  };
+
+  const saveLandingSettings = async () => {
+    setIsSavingLandingSettings(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType }),
+      });
+      if (!res.ok) throw new Error('Failed to save landing settings');
+      showMessage('success', '랜딩페이지 설정이 저장되었습니다.');
+      setIsLandingSettingsOpen(false);
+    } catch (err) {
+      console.error('Failed to save landing settings:', err);
+      showMessage('error', '랜딩페이지 설정 저장에 실패했습니다.');
+    } finally {
+      setIsSavingLandingSettings(false);
     }
   };
 
@@ -324,6 +355,19 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
+            {/* 랜딩페이지 설정 버튼 */}
+            <button
+              onClick={() => setIsLandingSettingsOpen(true)}
+              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm flex items-center gap-1.5 ${
+                landingLogoImage || landingBackgroundImage
+                  ? 'bg-white/20 text-white'
+                  : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <span>🎨</span>
+              <span className="hidden md:inline">랜딩페이지</span>
+            </button>
+
             {/* 회사 정보 설정 버튼 */}
             <button
               onClick={() => setIsCompanySettingsOpen(true)}
@@ -1093,6 +1137,283 @@ export default function AdminPage() {
                   className="flex-1 px-6 py-2 bg-white hover:bg-white/90 text-black font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {isSavingCompanySettings ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Landing Settings Modal */}
+      {isLandingSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-lg font-semibold">랜딩페이지 설정</h3>
+              <button
+                onClick={() => setIsLandingSettingsOpen(false)}
+                className="text-white/50 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              {/* 로고 이미지 업로드 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  로고 이미지 (SVG 권장)
+                </label>
+
+                {/* 로고 미리보기 */}
+                {landingLogoImage && (
+                  <div className="mb-3 p-4 bg-black rounded-lg border border-white/10">
+                    <div className="flex items-center justify-center">
+                      <img
+                        src={landingLogoImage}
+                        alt="로고 미리보기"
+                        className="max-h-24 object-contain"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLandingLogoImage(null)}
+                      className="mt-3 w-full px-3 py-1.5 text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                    >
+                      로고 제거
+                    </button>
+                  </div>
+                )}
+
+                {/* 파일 업로드 버튼 */}
+                <input
+                  ref={landingLogoInputRef}
+                  type="file"
+                  accept="image/*,.svg"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    setIsUploadingLandingLogo(true);
+                    try {
+                      const formDataUpload = new FormData();
+                      formDataUpload.append('file', file);
+
+                      const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formDataUpload,
+                      });
+
+                      if (!res.ok) throw new Error('Upload failed');
+
+                      const data = await res.json();
+                      setLandingLogoImage(data.url);
+                      showMessage('success', '로고 이미지 업로드 완료');
+                    } catch (err) {
+                      console.error('Upload error:', err);
+                      showMessage('error', '이미지 업로드에 실패했습니다.');
+                    } finally {
+                      setIsUploadingLandingLogo(false);
+                      if (landingLogoInputRef.current) {
+                        landingLogoInputRef.current.value = '';
+                      }
+                    }
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => landingLogoInputRef.current?.click()}
+                  disabled={isUploadingLandingLogo}
+                  className="w-full px-4 py-3 border-2 border-dashed border-white/20 hover:border-white/40 rounded-lg transition-colors text-white/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingLandingLogo ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      업로드 중...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {landingLogoImage ? '로고 이미지 변경' : '로고 이미지 업로드'}
+                    </span>
+                  )}
+                </button>
+                <p className="mt-2 text-xs text-white/30">
+                  SVG 형식을 권장합니다. 로고가 없으면 기본 &quot;THEXEN&quot; 텍스트가 표시됩니다.
+                </p>
+              </div>
+
+              {/* 배경 이미지 업로드 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  배경 이미지
+                </label>
+
+                {/* 배경 타입 선택 */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setLandingBackgroundType('tile')}
+                    className={`flex-1 px-3 py-2 rounded-lg border transition-colors text-sm ${
+                      landingBackgroundType === 'tile'
+                        ? 'border-white bg-white/10 text-white'
+                        : 'border-white/20 text-white/50 hover:border-white/40'
+                    }`}
+                  >
+                    패턴 반복 (타일)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLandingBackgroundType('cover')}
+                    className={`flex-1 px-3 py-2 rounded-lg border transition-colors text-sm ${
+                      landingBackgroundType === 'cover'
+                        ? 'border-white bg-white/10 text-white'
+                        : 'border-white/20 text-white/50 hover:border-white/40'
+                    }`}
+                  >
+                    전체 화면 (커버)
+                  </button>
+                </div>
+
+                {/* 배경 미리보기 */}
+                {landingBackgroundImage && (
+                  <div className="mb-3">
+                    <div
+                      className="h-32 rounded-lg border border-white/10 overflow-hidden"
+                      style={landingBackgroundType === 'tile' ? {
+                        backgroundImage: `url(${landingBackgroundImage})`,
+                        backgroundRepeat: 'repeat',
+                        backgroundSize: '100px 100px',
+                      } : {
+                        backgroundImage: `url(${landingBackgroundImage})`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    />
+                    {landingBackgroundType === 'tile' && (
+                      <div className="mt-2 flex gap-2">
+                        <div className="flex-1 p-2 bg-white/5 rounded text-center">
+                          <img
+                            src={landingBackgroundImage}
+                            alt="원본 타일"
+                            className="w-12 h-12 object-cover mx-auto border border-white/20"
+                          />
+                          <p className="text-xs text-white/40 mt-1">원본 타일</p>
+                        </div>
+                        <div className="flex-1 p-2 bg-white/5 rounded text-center flex items-center justify-center">
+                          <p className="text-xs text-white/40">100x100px로 타일링됩니다</p>
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setLandingBackgroundImage(null)}
+                      className="mt-3 w-full px-3 py-1.5 text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                    >
+                      배경 제거
+                    </button>
+                  </div>
+                )}
+
+                {/* 파일 업로드 버튼 */}
+                <input
+                  ref={landingBgInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    setIsUploadingLandingBg(true);
+                    try {
+                      const formDataUpload = new FormData();
+                      formDataUpload.append('file', file);
+
+                      const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formDataUpload,
+                      });
+
+                      if (!res.ok) throw new Error('Upload failed');
+
+                      const data = await res.json();
+                      setLandingBackgroundImage(data.url);
+                      showMessage('success', '배경 이미지 업로드 완료');
+                    } catch (err) {
+                      console.error('Upload error:', err);
+                      showMessage('error', '이미지 업로드에 실패했습니다.');
+                    } finally {
+                      setIsUploadingLandingBg(false);
+                      if (landingBgInputRef.current) {
+                        landingBgInputRef.current.value = '';
+                      }
+                    }
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => landingBgInputRef.current?.click()}
+                  disabled={isUploadingLandingBg}
+                  className="w-full px-4 py-3 border-2 border-dashed border-white/20 hover:border-white/40 rounded-lg transition-colors text-white/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingLandingBg ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      업로드 중...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {landingBackgroundImage ? '배경 이미지 변경' : '배경 이미지 업로드'}
+                    </span>
+                  )}
+                </button>
+                <p className="mt-2 text-xs text-white/30">
+                  {landingBackgroundType === 'tile'
+                    ? '100x100 픽셀 크기의 이미지를 권장합니다. 전체 화면에 반복 타일링됩니다.'
+                    : '전체 화면에 맞게 이미지가 표시됩니다. 고해상도 이미지를 권장합니다.'}
+                </p>
+              </div>
+
+              {/* 미리보기 안내 */}
+              {(landingLogoImage || landingBackgroundImage) && (
+                <div className="py-3 px-4 bg-white/5 rounded-lg text-center">
+                  <p className="text-sm text-white/50">
+                    저장 후 메인페이지에서 변경된 랜딩페이지를 확인할 수 있습니다.
+                  </p>
+                </div>
+              )}
+
+              {/* 버튼 */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLandingSettingsOpen(false)}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={saveLandingSettings}
+                  disabled={isSavingLandingSettings}
+                  className="flex-1 px-6 py-2 bg-white hover:bg-white/90 text-black font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {isSavingLandingSettings ? '저장 중...' : '저장'}
                 </button>
               </div>
             </div>

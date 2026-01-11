@@ -27,5 +27,9 @@ model SiteSettings {
   // 회사 소개 정보
   companyImages   String[] // 회사 소개 이미지들
   companyDescription String? // 회사 소개 텍스트
+  // 랜딩페이지 커스터마이징
+  landingLogoImage String?  // 로고 이미지 URL (SVG 권장)
+  landingBackgroundImage String?  // 배경 이미지 URL
+  landingBackgroundType String?  // 'tile' | 'cover' - 타일링 또는 전체 커버
   updatedAt       DateTime @updatedAt
 }
