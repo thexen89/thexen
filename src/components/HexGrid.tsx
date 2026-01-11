@@ -118,13 +118,13 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
                     quality={90}
                   />
 
-                  {/* 그림자 + 테두리 */}
+                  {/* 그림자 + 테두리 (5시 방향 = 오른쪽 아래) */}
                   <div
                     className="absolute inset-0 rounded-full pointer-events-none transition-all duration-200"
                     style={{
                       boxShadow: isHovered
-                        ? '0 12px 40px rgba(0, 0, 0, 0.8), 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 60px rgba(0, 0, 0, 0.4)'
-                        : '0 4px 20px rgba(0, 0, 0, 0.6), 0 2px 10px rgba(0, 0, 0, 0.4)',
+                        ? '6px 8px 30px rgba(0, 0, 0, 0.7), 3px 4px 15px rgba(0, 0, 0, 0.5)'
+                        : '4px 6px 15px rgba(0, 0, 0, 0.5), 2px 3px 8px rgba(0, 0, 0, 0.3)',
                       border: '1px solid rgba(255, 255, 255, 0.2)',
                     }}
                   />
