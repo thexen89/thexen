@@ -22,12 +22,53 @@ const getVideoEmbed = (url: string): { type: 'youtube' | 'vimeo'; id: string } |
   return null;
 };
 
+const IDLE_TIMEOUT = 10000; // 10초
+
 export default function Modal({ product, onClose, originPosition }: ModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [animationState, setAnimationState] = useState<'entering' | 'visible' | 'exiting'>('entering');
+  const [idleCountdown, setIdleCountdown] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // idle 타이머 초기화
+  const resetIdleTimer = useCallback(() => {
+    // 카운트다운 숨기기
+    setIdleCountdown(null);
+
+    // 기존 타이머 제거
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
+    // 새 타이머 시작 (7초 후 카운트다운 시작, 10초 후 닫기)
+    idleTimerRef.current = setTimeout(() => {
+      // 3초 카운트다운 시작
+      setIdleCountdown(3);
+      countdownIntervalRef.current = setInterval(() => {
+        setIdleCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            return prev;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }, IDLE_TIMEOUT - 3000); // 7초 후 카운트다운 시작
+  }, []);
 
   const handleClose = useCallback(() => {
+    // 타이머 정리
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
     setAnimationState('exiting');
     setTimeout(() => {
       onClose();
@@ -46,6 +87,7 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
 
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
+      resetIdleTimer(); // 키보드 입력 시 타이머 리셋
       if (e.key === 'Escape') {
         handleClose();
       } else if (e.key === 'ArrowLeft') {
@@ -54,8 +96,18 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
         goToNext();
       }
     },
-    [handleClose, goToPrev, goToNext]
+    [handleClose, goToPrev, goToNext, resetIdleTimer]
   );
+
+  // 카운트다운이 0이 되면 자동으로 닫기
+  useEffect(() => {
+    if (idleCountdown === 1) {
+      const closeTimer = setTimeout(() => {
+        handleClose();
+      }, 1000);
+      return () => clearTimeout(closeTimer);
+    }
+  }, [idleCountdown, handleClose]);
 
   useEffect(() => {
     if (product) {
@@ -69,13 +121,35 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
         setAnimationState('visible');
       }, 300);
 
+      // idle 타이머 시작
+      resetIdleTimer();
+
+      // 마우스 움직임 감지
+      const handleActivity = () => {
+        resetIdleTimer();
+      };
+      document.addEventListener('mousemove', handleActivity);
+      document.addEventListener('click', handleActivity);
+      document.addEventListener('scroll', handleActivity);
+
       return () => {
         clearTimeout(timer);
         document.removeEventListener('keydown', handleEscape);
+        document.removeEventListener('mousemove', handleActivity);
+        document.removeEventListener('click', handleActivity);
+        document.removeEventListener('scroll', handleActivity);
         document.body.style.overflow = '';
+
+        // 타이머 정리
+        if (idleTimerRef.current) {
+          clearTimeout(idleTimerRef.current);
+        }
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
       };
     }
-  }, [product, handleEscape]);
+  }, [product, handleEscape, resetIdleTimer]);
 
   if (!product) return null;
 
@@ -121,6 +195,13 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
       }`}
       onClick={handleClose}
     >
+      {/* Idle 카운트다운 표시 */}
+      {idleCountdown !== null && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 bg-black/80 text-white rounded-full text-sm animate-pulse">
+          {idleCountdown}초 후 메인페이지로 이동합니다
+        </div>
+      )}
+
       {/* Backdrop - 반투명 어두운 배경 */}
       <div
         className={`absolute inset-0 bg-black/90 transition-opacity duration-300 ${
