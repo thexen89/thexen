@@ -154,32 +154,34 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
                     if (el) itemRefs.current.set(product.id, el);
                   }}
                   onClick={(e) => handleClick(product, e)}
-                  className="group relative rounded-full overflow-hidden flex-shrink-0 focus:outline-none"
+                  className="group relative rounded-full flex-shrink-0 focus:outline-none"
                   style={{
                     width: ITEM_SIZE,
                     height: ITEM_SIZE,
                     zIndex: Math.round(scale * 100),
                     transform: `scale(${scale})`,
-                    transition: 'transform 0.15s ease-out, z-index 0s',
+                    transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out, z-index 0s',
+                    boxShadow: isScaled
+                      ? '6px 8px 30px rgba(0, 0, 0, 0.7), 3px 4px 15px rgba(0, 0, 0, 0.5)'
+                      : '4px 6px 15px rgba(0, 0, 0, 0.5), 2px 3px 8px rgba(0, 0, 0, 0.3)',
                   }}
                 >
                   {/* 이미지 */}
-                  <Image
-                    src={product.images[product.thumbnailIndex] || product.images[0]}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    sizes={`${Math.round(ITEM_SIZE * MAX_SCALE)}px`}
-                    quality={90}
-                  />
+                  <div className="absolute inset-0 rounded-full overflow-hidden">
+                    <Image
+                      src={product.images[product.thumbnailIndex] || product.images[0]}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                      sizes={`${Math.round(ITEM_SIZE * MAX_SCALE)}px`}
+                      quality={90}
+                    />
+                  </div>
 
-                  {/* 그림자 + 테두리 (5시 방향 = 오른쪽 아래) */}
+                  {/* 테두리 */}
                   <div
-                    className="absolute inset-0 rounded-full pointer-events-none transition-all duration-150"
+                    className="absolute inset-0 rounded-full pointer-events-none"
                     style={{
-                      boxShadow: isScaled
-                        ? '6px 8px 30px rgba(0, 0, 0, 0.7), 3px 4px 15px rgba(0, 0, 0, 0.5)'
-                        : '4px 6px 15px rgba(0, 0, 0, 0.5), 2px 3px 8px rgba(0, 0, 0, 0.3)',
                       border: '1px solid rgba(255, 255, 255, 0.2)',
                     }}
                   />
