@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import HexGrid from '@/components/HexGrid';
 import MobileHexGrid from '@/components/MobileHexGrid';
 import Modal from '@/components/Modal';
@@ -18,6 +18,7 @@ interface ClickPosition {
 }
 
 const HEADER_HEIGHT = 60; // 헤더 높이 (px)
+const IDLE_TIMEOUT = 10000; // 10초
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +30,9 @@ export default function Home() {
   const [seasonalEffect, setSeasonalEffect] = useState<EffectType>(null);
   const [effectEnabled, setEffectEnabled] = useState(false);
   const [showCompanyInfo, setShowCompanyInfo] = useState(false);
+  const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
+  const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const gridCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { isLandscape, showRotatePrompt, requestFullscreenLandscape, dismissRotatePrompt } = useFullscreenLandscape();
 
   // 모바일 감지
@@ -97,6 +101,90 @@ export default function Home() {
     setSelectedProduct(null);
     setClickPosition(null);
   }, []);
+
+  // 랜딩 페이지로 이동 (idle 타이머에 의해 호출)
+  const handleReturnToLanding = useCallback(() => {
+    setSelectedProduct(null);
+    setClickPosition(null);
+    setGridIdleCountdown(null);
+    setViewState('landing');
+  }, []);
+
+  // 그리드 화면 idle 타이머 리셋
+  const resetGridIdleTimer = useCallback(() => {
+    setGridIdleCountdown(null);
+
+    if (gridIdleTimerRef.current) {
+      clearTimeout(gridIdleTimerRef.current);
+    }
+    if (gridCountdownIntervalRef.current) {
+      clearInterval(gridCountdownIntervalRef.current);
+    }
+
+    // 7초 후 카운트다운 시작
+    gridIdleTimerRef.current = setTimeout(() => {
+      setGridIdleCountdown(3);
+      gridCountdownIntervalRef.current = setInterval(() => {
+        setGridIdleCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            return prev;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }, IDLE_TIMEOUT - 3000);
+  }, []);
+
+  // 그리드 화면 idle 타이머 - viewState가 grid일 때만 활성화
+  useEffect(() => {
+    // 모달이 열려있으면 그리드 타이머 비활성화 (모달이 자체 타이머 가짐)
+    if (viewState !== 'grid' || selectedProduct) {
+      if (gridIdleTimerRef.current) {
+        clearTimeout(gridIdleTimerRef.current);
+      }
+      if (gridCountdownIntervalRef.current) {
+        clearInterval(gridCountdownIntervalRef.current);
+      }
+      setGridIdleCountdown(null);
+      return;
+    }
+
+    // idle 타이머 시작
+    resetGridIdleTimer();
+
+    const handleActivity = () => {
+      resetGridIdleTimer();
+    };
+
+    document.addEventListener('mousemove', handleActivity);
+    document.addEventListener('click', handleActivity);
+    document.addEventListener('scroll', handleActivity);
+    document.addEventListener('keydown', handleActivity);
+
+    return () => {
+      document.removeEventListener('mousemove', handleActivity);
+      document.removeEventListener('click', handleActivity);
+      document.removeEventListener('scroll', handleActivity);
+      document.removeEventListener('keydown', handleActivity);
+
+      if (gridIdleTimerRef.current) {
+        clearTimeout(gridIdleTimerRef.current);
+      }
+      if (gridCountdownIntervalRef.current) {
+        clearInterval(gridCountdownIntervalRef.current);
+      }
+    };
+  }, [viewState, selectedProduct, resetGridIdleTimer]);
+
+  // 그리드 카운트다운이 끝나면 랜딩으로 이동
+  useEffect(() => {
+    if (gridIdleCountdown === 1) {
+      const timer = setTimeout(() => {
+        handleReturnToLanding();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [gridIdleCountdown, handleReturnToLanding]);
 
   if (isLoading) {
     return (
@@ -269,6 +357,7 @@ export default function Home() {
       <Modal
         product={selectedProduct}
         onClose={handleCloseModal}
+        onReturnToLanding={handleReturnToLanding}
         originPosition={clickPosition}
       />
 

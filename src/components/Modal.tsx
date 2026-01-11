@@ -6,6 +6,7 @@ import { Product } from '@/lib/types';
 interface ModalProps {
   product: Product | null;
   onClose: () => void;
+  onReturnToLanding?: () => void;
   originPosition?: { x: number; y: number; size: number } | null;
 }
 
@@ -24,7 +25,7 @@ const getVideoEmbed = (url: string): { type: 'youtube' | 'vimeo'; id: string } |
 
 const IDLE_TIMEOUT = 10000; // 10초
 
-export default function Modal({ product, onClose, originPosition }: ModalProps) {
+export default function Modal({ product, onClose, onReturnToLanding, originPosition }: ModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [animationState, setAnimationState] = useState<'entering' | 'visible' | 'exiting'>('entering');
   const [idleCountdown, setIdleCountdown] = useState<number | null>(null);
@@ -99,15 +100,27 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
     [handleClose, goToPrev, goToNext, resetIdleTimer]
   );
 
-  // 카운트다운이 0이 되면 자동으로 닫기
+  // 카운트다운이 0이 되면 메인페이지로 이동
   useEffect(() => {
     if (idleCountdown === 1) {
       const closeTimer = setTimeout(() => {
-        handleClose();
+        // 타이머 정리
+        if (idleTimerRef.current) {
+          clearTimeout(idleTimerRef.current);
+        }
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+        // 랜딩 페이지로 이동 (있으면), 없으면 단순히 닫기
+        if (onReturnToLanding) {
+          onReturnToLanding();
+        } else {
+          handleClose();
+        }
       }, 1000);
       return () => clearTimeout(closeTimer);
     }
-  }, [idleCountdown, handleClose]);
+  }, [idleCountdown, handleClose, onReturnToLanding]);
 
   useEffect(() => {
     if (product) {
@@ -195,13 +208,6 @@ export default function Modal({ product, onClose, originPosition }: ModalProps) 
       }`}
       onClick={handleClose}
     >
-      {/* Idle 카운트다운 표시 */}
-      {idleCountdown !== null && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 bg-black/80 text-white rounded-full text-sm animate-pulse">
-          {idleCountdown}초 후 메인페이지로 이동합니다
-        </div>
-      )}
-
       {/* Backdrop - 반투명 어두운 배경 */}
       <div
         className={`absolute inset-0 bg-black/90 transition-opacity duration-300 ${
