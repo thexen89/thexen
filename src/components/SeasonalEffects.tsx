@@ -19,6 +19,7 @@ interface Particle {
   rotation?: number;
   rotationSpeed?: number;
   color?: string;
+  side: 'left' | 'right'; // 어느 쪽 영역에 속하는지
 }
 
 export default function SeasonalEffects({ effect, enabled }: SeasonalEffectsProps) {
@@ -50,20 +51,35 @@ export default function SeasonalEffects({ effect, enabled }: SeasonalEffectsProp
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const createParticle = (): Particle => {
+    // 사이드 영역 너비 (화면의 약 20%)
+    const SIDE_WIDTH = canvas.width * 0.22;
+
+    // 사이드 영역에서 랜덤 X 좌표 생성
+    const getRandomX = (side: 'left' | 'right'): number => {
+      if (side === 'left') {
+        return Math.random() * SIDE_WIDTH;
+      } else {
+        return canvas.width - SIDE_WIDTH + Math.random() * SIDE_WIDTH;
+      }
+    };
+
+    const createParticle = (forceSide?: 'left' | 'right'): Particle => {
+      const side = forceSide || (Math.random() > 0.5 ? 'left' : 'right');
+
       switch (effect) {
         case 'snow':
           return {
-            x: Math.random() * canvas.width,
+            x: getRandomX(side),
             y: -10,
             size: Math.random() * 4 + 2,
             speedX: Math.random() * 2 - 1,
             speedY: Math.random() * 2 + 1,
             opacity: Math.random() * 0.5 + 0.5,
+            side,
           };
         case 'cherry':
           return {
-            x: Math.random() * canvas.width,
+            x: getRandomX(side),
             y: -10,
             size: Math.random() * 8 + 6,
             speedX: Math.random() * 2 - 0.5,
@@ -72,11 +88,12 @@ export default function SeasonalEffects({ effect, enabled }: SeasonalEffectsProp
             rotation: Math.random() * 360,
             rotationSpeed: Math.random() * 4 - 2,
             color: `hsl(${340 + Math.random() * 20}, 80%, ${70 + Math.random() * 20}%)`,
+            side,
           };
         case 'leaves':
           const colors = ['#e67e22', '#d35400', '#f39c12', '#c0392b', '#8e44ad'];
           return {
-            x: Math.random() * canvas.width,
+            x: getRandomX(side),
             y: -10,
             size: Math.random() * 12 + 8,
             speedX: Math.random() * 3 - 1,
@@ -85,16 +102,18 @@ export default function SeasonalEffects({ effect, enabled }: SeasonalEffectsProp
             rotation: Math.random() * 360,
             rotationSpeed: Math.random() * 6 - 3,
             color: colors[Math.floor(Math.random() * colors.length)],
+            side,
           };
         case 'fireworks':
           return {
-            x: Math.random() * canvas.width,
+            x: getRandomX(side),
             y: canvas.height + 10,
             size: Math.random() * 3 + 2,
             speedX: 0,
             speedY: -(Math.random() * 8 + 6),
             opacity: 1,
             color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+            side,
           };
         default:
           return {
@@ -104,6 +123,7 @@ export default function SeasonalEffects({ effect, enabled }: SeasonalEffectsProp
             speedX: 0,
             speedY: 0,
             opacity: 0,
+            side,
           };
       }
     };
@@ -240,20 +260,20 @@ export default function SeasonalEffects({ effect, enabled }: SeasonalEffectsProp
             // Check for explosion
             if (p.speedY >= -2) {
               createExplosion(p.x, p.y);
-              particlesRef.current[index] = createParticle();
+              particlesRef.current[index] = createParticle(p.side);
             }
             p.speedY += 0.15; // gravity
             break;
         }
 
-        // Reset particle if out of bounds
+        // Reset particle if out of bounds (같은 사이드에서 재생성)
         if (effect !== 'fireworks') {
           if (p.y > canvas.height + 20 || p.x < -20 || p.x > canvas.width + 20) {
-            particlesRef.current[index] = createParticle();
+            particlesRef.current[index] = createParticle(p.side);
           }
         } else {
           if (p.y > canvas.height + 20) {
-            particlesRef.current[index] = createParticle();
+            particlesRef.current[index] = createParticle(p.side);
           }
         }
       });
