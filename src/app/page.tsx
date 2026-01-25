@@ -36,6 +36,7 @@ export default function Home() {
   const [landingLogoImage, setLandingLogoImage] = useState<string | null>(null);
   const [landingBackgroundImage, setLandingBackgroundImage] = useState<string | null>(null);
   const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
+  const [landingEnterImage, setLandingEnterImage] = useState<string | null>(null);
   const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
   const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gridCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -77,6 +78,7 @@ export default function Home() {
         setLandingLogoImage(data.landingLogoImage || null);
         setLandingBackgroundImage(data.landingBackgroundImage || null);
         setLandingBackgroundType(data.landingBackgroundType || 'tile');
+        setLandingEnterImage(data.landingEnterImage || null);
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -289,15 +291,25 @@ export default function Home() {
 
           {/* 클릭 유도 */}
           <div className="absolute bottom-16 md:bottom-20 flex flex-col items-center gap-3">
-            <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center animate-bounce">
-              <svg
-                className="w-5 h-5 text-white/60"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
+            <div className="animate-bounce">
+              {landingEnterImage ? (
+                <img
+                  src={landingEnterImage}
+                  alt="Enter"
+                  className="w-10 h-10 md:w-12 md:h-12 object-contain"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-white/60"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </div>
+              )}
             </div>
             <p className="text-white/30 text-xs tracking-widest uppercase">Enter</p>
           </div>

@@ -40,13 +40,16 @@ export default function AdminPage() {
   const [landingLogoImage, setLandingLogoImage] = useState<string | null>(null);
   const [landingBackgroundImage, setLandingBackgroundImage] = useState<string | null>(null);
   const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
+  const [landingEnterImage, setLandingEnterImage] = useState<string | null>(null);
   const [isUploadingLandingLogo, setIsUploadingLandingLogo] = useState(false);
   const [isUploadingLandingBg, setIsUploadingLandingBg] = useState(false);
+  const [isUploadingLandingEnter, setIsUploadingLandingEnter] = useState(false);
   const [isSavingLandingSettings, setIsSavingLandingSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const companyFileInputRef = useRef<HTMLInputElement>(null);
   const landingLogoInputRef = useRef<HTMLInputElement>(null);
   const landingBgInputRef = useRef<HTMLInputElement>(null);
+  const landingEnterInputRef = useRef<HTMLInputElement>(null);
 
   // 모바일 감지
   useEffect(() => {
@@ -84,6 +87,7 @@ export default function AdminPage() {
       setLandingLogoImage(data.landingLogoImage || null);
       setLandingBackgroundImage(data.landingBackgroundImage || null);
       setLandingBackgroundType(data.landingBackgroundType || 'tile');
+      setLandingEnterImage(data.landingEnterImage || null);
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -133,7 +137,7 @@ export default function AdminPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType }),
+        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage }),
       });
       if (!res.ok) throw new Error('Failed to save landing settings');
       showMessage('success', '랜딩페이지 설정이 저장되었습니다.');
@@ -1391,8 +1395,101 @@ export default function AdminPage() {
                 </p>
               </div>
 
+              {/* 엔터 버튼 이미지 업로드 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  엔터 버튼 이미지
+                </label>
+
+                {/* 미리보기 */}
+                {landingEnterImage && (
+                  <div className="mb-3">
+                    <div className="flex items-center justify-center p-4 bg-black/50 rounded-lg border border-white/10">
+                      <div className="animate-bounce">
+                        <img
+                          src={landingEnterImage}
+                          alt="엔터 버튼"
+                          className="w-16 h-16 object-contain"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLandingEnterImage(null)}
+                      className="mt-3 w-full px-3 py-1.5 text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                    >
+                      엔터 버튼 이미지 제거
+                    </button>
+                  </div>
+                )}
+
+                {/* 파일 업로드 버튼 */}
+                <input
+                  ref={landingEnterInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    setIsUploadingLandingEnter(true);
+                    try {
+                      const formDataUpload = new FormData();
+                      formDataUpload.append('file', file);
+
+                      const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formDataUpload,
+                      });
+
+                      if (!res.ok) throw new Error('Upload failed');
+
+                      const data = await res.json();
+                      setLandingEnterImage(data.url);
+                      showMessage('success', '엔터 버튼 이미지 업로드 완료');
+                    } catch (err) {
+                      console.error('Upload error:', err);
+                      showMessage('error', '이미지 업로드에 실패했습니다.');
+                    } finally {
+                      setIsUploadingLandingEnter(false);
+                      if (landingEnterInputRef.current) {
+                        landingEnterInputRef.current.value = '';
+                      }
+                    }
+                  }}
+                  className="absolute opacity-0 w-0 h-0"
+                  style={{ pointerEvents: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => landingEnterInputRef.current?.click()}
+                  disabled={isUploadingLandingEnter}
+                  className="w-full px-4 py-3 border-2 border-dashed border-white/20 hover:border-white/40 rounded-lg transition-colors text-white/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingLandingEnter ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      업로드 중...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {landingEnterImage ? '엔터 버튼 이미지 변경' : '엔터 버튼 이미지 업로드'}
+                    </span>
+                  )}
+                </button>
+                <p className="mt-2 text-xs text-white/30">
+                  원형 이미지를 권장합니다. 업로드하지 않으면 기본 화살표 아이콘이 표시됩니다.
+                </p>
+              </div>
+
               {/* 미리보기 안내 */}
-              {(landingLogoImage || landingBackgroundImage) && (
+              {(landingLogoImage || landingBackgroundImage || landingEnterImage) && (
                 <div className="py-3 px-4 bg-white/5 rounded-lg text-center">
                   <p className="text-sm text-white/50">
                     저장 후 메인페이지에서 변경된 랜딩페이지를 확인할 수 있습니다.

@@ -31,5 +31,6 @@ model SiteSettings {
   landingLogoImage String?  // 로고 이미지 URL (SVG 권장)
   landingBackgroundImage String?  // 배경 이미지 URL
   landingBackgroundType String?  // 'tile' | 'cover' - 타일링 또는 전체 커버
+  landingEnterImage String?  // 엔터 버튼 이미지 URL
   updatedAt       DateTime @updatedAt
 }
