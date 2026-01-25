@@ -258,7 +258,7 @@ export default function Home() {
               <img
                 src={landingLogoImage}
                 alt="Logo"
-                className="max-h-32 md:max-h-48 object-contain"
+                className="max-h-44 md:max-h-64 object-contain"
               />
             </div>
           ) : (

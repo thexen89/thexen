@@ -1358,7 +1358,8 @@ export default function AdminPage() {
                       }
                     }
                   }}
-                  className="hidden"
+                  className="absolute opacity-0 w-0 h-0"
+                  style={{ pointerEvents: 'none' }}
                 />
                 <button
                   type="button"
