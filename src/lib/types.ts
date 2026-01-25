@@ -9,6 +9,7 @@ export interface Product {
   createdAt: string;
   shape?: 'hexagon' | 'circle';
   showInfo?: boolean;
+  videoUrl?: string;
 }
 
 export interface HexPosition {

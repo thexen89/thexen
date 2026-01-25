@@ -31,6 +31,7 @@ export async function POST(request: Request) {
         priority: body.priority || (maxPriority._max.priority || 0) + 1,
         shape: body.shape,
         showInfo: body.showInfo || false,
+        videoUrl: body.videoUrl || null,
       },
     });
 
@@ -56,6 +57,7 @@ export async function PUT(request: Request) {
         priority: body.priority,
         shape: body.shape,
         showInfo: body.showInfo ?? false,
+        videoUrl: body.videoUrl ?? null,
       },
     });
 

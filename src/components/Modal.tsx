@@ -23,7 +23,7 @@ const getVideoEmbed = (url: string): { type: 'youtube' | 'vimeo'; id: string } |
   return null;
 };
 
-const IDLE_TIMEOUT = 10000; // 10초
+const IDLE_TIMEOUT = 300000; // 5분
 
 export default function Modal({ product, onClose, onReturnToLanding, originPosition }: ModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -78,12 +78,14 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   const goToPrev = useCallback(() => {
     if (!product) return;
-    setCurrentIndex((prev) => (prev === 0 ? product.images.length - 1 : prev - 1));
+    const totalItems = (product.videoUrl ? 1 : 0) + product.images.length;
+    setCurrentIndex((prev) => (prev === 0 ? totalItems - 1 : prev - 1));
   }, [product]);
 
   const goToNext = useCallback(() => {
     if (!product) return;
-    setCurrentIndex((prev) => (prev === product.images.length - 1 ? 0 : prev + 1));
+    const totalItems = (product.videoUrl ? 1 : 0) + product.images.length;
+    setCurrentIndex((prev) => (prev === totalItems - 1 ? 0 : prev + 1));
   }, [product]);
 
   const handleEscape = useCallback(
@@ -166,9 +168,12 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   if (!product) return null;
 
-  const images = product.images;
-  const hasMultipleImages = images.length > 1;
-  const currentMedia = images[currentIndex];
+  // 이미지 배열에 비디오 URL이 있으면 첫 번째로 추가
+  const mediaItems = product.videoUrl
+    ? [product.videoUrl, ...product.images]
+    : product.images;
+  const hasMultipleMedia = mediaItems.length > 1;
+  const currentMedia = mediaItems[currentIndex];
   const videoEmbed = getVideoEmbed(currentMedia);
 
   // 애니메이션 스타일 계산
@@ -222,51 +227,26 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 상단 버튼 영역 */}
-        <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
-          {/* 뒤로가기 버튼 */}
-          <button
-            onClick={handleClose}
-            className="flex items-center gap-2 px-3 py-2 rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
+        {/* Close button (X) */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            <span className="text-sm font-medium">뒤로가기</span>
-          </button>
-
-          {/* Close button (X) */}
-          <button
-            onClick={handleClose}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
 
         {/* Image/Video */}
         <div className="relative flex items-center justify-center">
@@ -299,7 +279,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           )}
 
           {/* Navigation Arrows */}
-          {hasMultipleImages && (
+          {hasMultipleMedia && (
             <>
               <button
                 onClick={goToPrev}
@@ -343,9 +323,9 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           )}
 
           {/* Dots Indicator */}
-          {hasMultipleImages && (
+          {hasMultipleMedia && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              {images.map((_, idx) => (
+              {mediaItems.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}
@@ -354,13 +334,6 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
                   }`}
                 />
               ))}
-            </div>
-          )}
-
-          {/* Image Counter */}
-          {hasMultipleImages && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/50 text-white text-sm rounded-full">
-              {currentIndex + 1} / {images.length}
             </div>
           )}
 

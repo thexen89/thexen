@@ -16,6 +16,7 @@ model Product {
   priority       Int
   shape          String?
   showInfo       Boolean  @default(false)
+  videoUrl       String?  // 유튜브 또는 비디오 URL
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

@@ -19,7 +19,7 @@ interface ClickPosition {
 }
 
 const HEADER_HEIGHT = 60; // 헤더 높이 (px)
-const IDLE_TIMEOUT = 10000; // 10초
+const IDLE_TIMEOUT = 300000; // 5분
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);

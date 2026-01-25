@@ -69,6 +69,7 @@ export default function AdminPage() {
     thumbnailIndex: 0,
     description: '',
     showInfo: false,
+    videoUrl: '',
   });
 
   useEffect(() => {
@@ -178,6 +179,7 @@ export default function AdminPage() {
         thumbnailIndex: product.thumbnailIndex,
         description: product.description,
         showInfo: product.showInfo || false,
+        videoUrl: product.videoUrl || '',
       });
     } else {
       setEditingProduct(null);
@@ -188,6 +190,7 @@ export default function AdminPage() {
         thumbnailIndex: 0,
         description: '',
         showInfo: false,
+        videoUrl: '',
       });
     }
     setIsModalOpen(true);
@@ -203,6 +206,7 @@ export default function AdminPage() {
       thumbnailIndex: 0,
       description: '',
       showInfo: false,
+      videoUrl: '',
     });
   };
 
@@ -816,6 +820,23 @@ export default function AdminPage() {
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30 resize-none"
                   placeholder="제품에 대한 설명을 입력하세요."
                 />
+              </div>
+
+              {/* 비디오 URL */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1">
+                  비디오 URL (선택사항)
+                </label>
+                <input
+                  type="url"
+                  value={formData.videoUrl}
+                  onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30"
+                  placeholder="https://www.youtube.com/watch?v=... 또는 비디오 URL"
+                />
+                <p className="mt-1 text-xs text-white/40">
+                  유튜브 링크 또는 직접 비디오 URL을 입력하세요. 상세페이지에서 재생됩니다.
+                </p>
               </div>
 
               {/* 텍스트 표시 토글 */}
