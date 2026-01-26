@@ -37,7 +37,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { seasonalEffect, effectEnabled, companyImages, companyDescription, landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor } = body;
+    const { seasonalEffect, effectEnabled, companyImages, companyDescription, landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, externalLinks } = body;
 
     // 업데이트할 데이터 구성 (전달된 필드만 업데이트)
     const updateData: Record<string, unknown> = {};
@@ -50,6 +50,7 @@ export async function PUT(request: Request) {
     if (landingBackgroundType !== undefined) updateData.landingBackgroundType = landingBackgroundType;
     if (landingEnterImage !== undefined) updateData.landingEnterImage = landingEnterImage;
     if (gridBackgroundColor !== undefined) updateData.gridBackgroundColor = gridBackgroundColor;
+    if (externalLinks !== undefined) updateData.externalLinks = externalLinks;
 
     const settings = await prisma.siteSettings.upsert({
       where: { id: DEFAULT_ID },
@@ -65,6 +66,7 @@ export async function PUT(request: Request) {
         landingBackgroundType: landingBackgroundType ?? 'tile',
         landingEnterImage: landingEnterImage ?? null,
         gridBackgroundColor: gridBackgroundColor ?? null,
+        externalLinks: externalLinks ?? null,
       },
     });
 

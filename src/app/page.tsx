@@ -38,6 +38,7 @@ export default function Home() {
   const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
   const [landingEnterImage, setLandingEnterImage] = useState<string | null>(null);
   const [gridBackgroundColor, setGridBackgroundColor] = useState('#000000');
+  const [externalLinks, setExternalLinks] = useState<{image: string, url: string}[]>([]);
   const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
   const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gridCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,6 +82,7 @@ export default function Home() {
         setLandingBackgroundType(data.landingBackgroundType || 'tile');
         setLandingEnterImage(data.landingEnterImage || null);
         setGridBackgroundColor(data.gridBackgroundColor || '#000000');
+        setExternalLinks(data.externalLinks || []);
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -354,12 +356,19 @@ export default function Home() {
         >
           THEXEN
         </button>
-        <a
-          href="#"
-          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          Shop
-        </a>
+        <div className="flex items-center gap-2">
+          {externalLinks.filter(link => link.image && link.url).map((link, idx) => (
+            <a
+              key={idx}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20"
+            >
+              <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+            </a>
+          ))}
+        </div>
       </header>
 
       {/* Hex Grid - PC or Mobile (with expanding animation) */}

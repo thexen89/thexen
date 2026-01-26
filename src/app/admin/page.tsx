@@ -51,6 +51,9 @@ export default function AdminPage() {
   const landingLogoInputRef = useRef<HTMLInputElement>(null);
   const landingBgInputRef = useRef<HTMLInputElement>(null);
   const landingEnterInputRef = useRef<HTMLInputElement>(null);
+  const [externalLinks, setExternalLinks] = useState<{image: string, url: string}[]>([]);
+  const [isUploadingExternalLink, setIsUploadingExternalLink] = useState<number | null>(null);
+  const externalLinkInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // 모바일 감지
   useEffect(() => {
@@ -91,6 +94,7 @@ export default function AdminPage() {
       setLandingBackgroundType(data.landingBackgroundType || 'tile');
       setLandingEnterImage(data.landingEnterImage || null);
       setGridBackgroundColor(data.gridBackgroundColor || '#000000');
+      setExternalLinks(data.externalLinks || []);
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -140,7 +144,7 @@ export default function AdminPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor }),
+        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, externalLinks }),
       });
       if (!res.ok) throw new Error('Failed to save landing settings');
       showMessage('success', '랜딩페이지 설정이 저장되었습니다.');
@@ -368,40 +372,40 @@ export default function AdminPage() {
             {/* 랜딩페이지 설정 버튼 */}
             <button
               onClick={() => setIsLandingSettingsOpen(true)}
-              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm ${
                 landingLogoImage || landingBackgroundImage
                   ? 'bg-white/20 text-white'
                   : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
               }`}
             >
-              <span>🎨</span>
               <span className="hidden md:inline">랜딩페이지</span>
+              <span className="md:hidden">랜딩</span>
             </button>
 
             {/* 회사 정보 설정 버튼 */}
             <button
               onClick={() => setIsCompanySettingsOpen(true)}
-              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm ${
                 companyImages.length > 0
                   ? 'bg-white/20 text-white'
                   : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
               }`}
             >
-              <span>🏢</span>
               <span className="hidden md:inline">회사 정보</span>
+              <span className="md:hidden">회사</span>
             </button>
 
             {/* 시즌 효과 설정 버튼 */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg transition-colors text-xs md:text-sm ${
                 effectEnabled && seasonalEffect
                   ? 'bg-white/20 text-white'
                   : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
               }`}
             >
-              <span>{EFFECT_OPTIONS.find(o => o.value === seasonalEffect)?.icon || '⚙️'}</span>
               <span className="hidden md:inline">시즌 효과</span>
+              <span className="md:hidden">시즌</span>
             </button>
 
             {/* View Toggle - PC only */}
@@ -495,7 +499,7 @@ export default function AdminPage() {
                       <th className="px-4 py-3 text-left text-sm font-medium text-white/50">제품명</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-white/50">고객사</th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-white/50 w-20">텍스트</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-white/50 w-32">작업</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-white/50 w-36 whitespace-nowrap">작업</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
@@ -591,16 +595,16 @@ export default function AdminPage() {
                             </button>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                               <button
                                 onClick={() => openModal(product)}
-                                className="px-3 py-1 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors"
+                                className="px-2.5 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors"
                               >
                                 수정
                               </button>
                               <button
                                 onClick={() => handleDelete(product.id)}
-                                className="px-3 py-1 text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                                className="px-2.5 py-1 text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
                               >
                                 삭제
                               </button>
@@ -1428,13 +1432,11 @@ export default function AdminPage() {
                 {landingEnterImage && (
                   <div className="mb-3">
                     <div className="flex items-center justify-center p-4 bg-black/50 rounded-lg border border-white/10">
-                      <div className="animate-bounce">
-                        <img
-                          src={landingEnterImage}
-                          alt="엔터 버튼"
-                          className="w-16 h-16 object-contain"
-                        />
-                      </div>
+                      <img
+                        src={landingEnterImage}
+                        alt="엔터 버튼"
+                        className="w-16 h-16 object-contain"
+                      />
                     </div>
                     <button
                       type="button"
@@ -1540,6 +1542,109 @@ export default function AdminPage() {
                 </div>
                 <p className="mt-2 text-xs text-white/30">
                   포트폴리오 그리드 화면의 배경색을 설정합니다.
+                </p>
+              </div>
+
+              {/* 외부 링크 버튼 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  외부 링크 버튼 (최대 3개)
+                </label>
+                <div className="space-y-3">
+                  {externalLinks.map((link, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-3 bg-white/5 rounded-lg">
+                      {/* Image preview */}
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+                        {link.image ? (
+                          <img src={link.image} alt={`링크 ${idx + 1}`} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px]">IMG</div>
+                        )}
+                      </div>
+                      {/* Upload button */}
+                      <input
+                        ref={(el) => { externalLinkInputRefs.current[idx] = el; }}
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          setIsUploadingExternalLink(idx);
+                          try {
+                            const formDataUpload = new FormData();
+                            formDataUpload.append('file', file);
+
+                            const res = await fetch('/api/upload', {
+                              method: 'POST',
+                              body: formDataUpload,
+                            });
+
+                            if (!res.ok) throw new Error('Upload failed');
+
+                            const data = await res.json();
+                            setExternalLinks(prev => {
+                              const newLinks = [...prev];
+                              newLinks[idx] = { ...newLinks[idx], image: data.url };
+                              return newLinks;
+                            });
+                            showMessage('success', '이미지 업로드 완료');
+                          } catch (err) {
+                            console.error('Upload error:', err);
+                            showMessage('error', '이미지 업로드에 실패했습니다.');
+                          } finally {
+                            setIsUploadingExternalLink(null);
+                            if (externalLinkInputRefs.current[idx]) {
+                              externalLinkInputRefs.current[idx]!.value = '';
+                            }
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => externalLinkInputRefs.current[idx]?.click()}
+                        disabled={isUploadingExternalLink === idx}
+                        className="px-2 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors flex-shrink-0 disabled:opacity-50"
+                      >
+                        {isUploadingExternalLink === idx ? '...' : '이미지'}
+                      </button>
+                      {/* URL input */}
+                      <input
+                        type="url"
+                        value={link.url}
+                        onChange={(e) => {
+                          const newLinks = [...externalLinks];
+                          newLinks[idx] = { ...newLinks[idx], url: e.target.value };
+                          setExternalLinks(newLinks);
+                        }}
+                        className="flex-1 min-w-0 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+                        placeholder="https://..."
+                      />
+                      {/* Delete button */}
+                      <button
+                        type="button"
+                        onClick={() => setExternalLinks(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-red-400 hover:text-red-300 flex-shrink-0 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                  {externalLinks.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setExternalLinks(prev => [...prev, { image: '', url: '' }])}
+                      className="w-full px-4 py-2.5 border-2 border-dashed border-white/20 hover:border-white/40 rounded-lg text-white/50 hover:text-white text-sm transition-colors"
+                    >
+                      + 링크 추가
+                    </button>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-white/30">
+                  메인 화면 우측 상단에 이미지 버튼으로 표시됩니다.
                 </p>
               </div>
 
