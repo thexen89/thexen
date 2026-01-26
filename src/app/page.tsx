@@ -37,6 +37,7 @@ export default function Home() {
   const [landingBackgroundImage, setLandingBackgroundImage] = useState<string | null>(null);
   const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
   const [landingEnterImage, setLandingEnterImage] = useState<string | null>(null);
+  const [gridBackgroundColor, setGridBackgroundColor] = useState('#000000');
   const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
   const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gridCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -79,6 +80,7 @@ export default function Home() {
         setLandingBackgroundImage(data.landingBackgroundImage || null);
         setLandingBackgroundType(data.landingBackgroundType || 'tile');
         setLandingEnterImage(data.landingEnterImage || null);
+        setGridBackgroundColor(data.gridBackgroundColor || '#000000');
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -337,14 +339,14 @@ export default function Home() {
   }
 
   return (
-    <main className="h-screen w-screen overflow-hidden relative flex flex-col">
+    <main className="h-screen w-screen overflow-hidden relative flex flex-col" style={{ backgroundColor: gridBackgroundColor }}>
       {/* 시즌 효과 */}
       <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
 
       {/* Header - 고정 영역 */}
       <header
-        className="flex-shrink-0 z-20 px-4 md:px-6 flex items-center justify-between bg-black border-b border-white/10"
-        style={{ height: HEADER_HEIGHT }}
+        className="flex-shrink-0 z-20 px-4 md:px-6 flex items-center justify-between border-b border-white/10"
+        style={{ height: HEADER_HEIGHT, backgroundColor: gridBackgroundColor }}
       >
         <button
           onClick={() => setShowCompanyModal(true)}

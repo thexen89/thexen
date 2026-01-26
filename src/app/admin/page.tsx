@@ -41,6 +41,7 @@ export default function AdminPage() {
   const [landingBackgroundImage, setLandingBackgroundImage] = useState<string | null>(null);
   const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
   const [landingEnterImage, setLandingEnterImage] = useState<string | null>(null);
+  const [gridBackgroundColor, setGridBackgroundColor] = useState('#000000');
   const [isUploadingLandingLogo, setIsUploadingLandingLogo] = useState(false);
   const [isUploadingLandingBg, setIsUploadingLandingBg] = useState(false);
   const [isUploadingLandingEnter, setIsUploadingLandingEnter] = useState(false);
@@ -89,6 +90,7 @@ export default function AdminPage() {
       setLandingBackgroundImage(data.landingBackgroundImage || null);
       setLandingBackgroundType(data.landingBackgroundType || 'tile');
       setLandingEnterImage(data.landingEnterImage || null);
+      setGridBackgroundColor(data.gridBackgroundColor || '#000000');
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -138,7 +140,7 @@ export default function AdminPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage }),
+        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor }),
       });
       if (!res.ok) throw new Error('Failed to save landing settings');
       showMessage('success', '랜딩페이지 설정이 저장되었습니다.');
@@ -1506,6 +1508,38 @@ export default function AdminPage() {
                 </button>
                 <p className="mt-2 text-xs text-white/30">
                   원형 이미지를 권장합니다. 업로드하지 않으면 기본 화살표 아이콘이 표시됩니다.
+                </p>
+              </div>
+
+              {/* 그리드 배경색 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  포트폴리오 배경색
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={gridBackgroundColor}
+                    onChange={(e) => setGridBackgroundColor(e.target.value)}
+                    className="w-12 h-12 rounded-lg border border-white/20 cursor-pointer bg-transparent"
+                  />
+                  <input
+                    type="text"
+                    value={gridBackgroundColor}
+                    onChange={(e) => setGridBackgroundColor(e.target.value)}
+                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30 font-mono"
+                    placeholder="#000000"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setGridBackgroundColor('#000000')}
+                    className="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white/50"
+                  >
+                    초기화
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-white/30">
+                  포트폴리오 그리드 화면의 배경색을 설정합니다.
                 </p>
               </div>
 
