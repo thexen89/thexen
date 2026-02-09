@@ -168,9 +168,9 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   if (!product) return null;
 
-  // 이미지 배열에 비디오 URL이 있으면 첫 번째로 추가
+  // 이미지 배열에 비디오 URL이 있으면 맨 뒤에 추가
   const mediaItems = product.videoUrl
-    ? [product.videoUrl, ...product.images]
+    ? [...product.images, product.videoUrl]
     : product.images;
   const hasMultipleMedia = mediaItems.length > 1;
   const currentMedia = mediaItems[currentIndex];
@@ -248,78 +248,61 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           </svg>
         </button>
 
-        {/* Image/Video */}
+        {/* Image/Video with Navigation */}
         <div className="relative flex items-center justify-center">
-          {videoEmbed ? (
-            <iframe
-              src={
-                videoEmbed.type === 'youtube'
-                  ? `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1`
-                  : `https://player.vimeo.com/video/${videoEmbed.id}?autoplay=1`
-              }
-              className="w-full aspect-video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          ) : (
-            <img
-              src={currentMedia}
-              alt={`${product.name} - ${currentIndex + 1}`}
-              className="max-w-[90vw] max-h-[90vh] object-contain"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = `data:image/svg+xml,${encodeURIComponent(`
-                  <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
-                    <rect fill="#111" width="400" height="300"/>
-                    <text fill="#444" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="150">${product.name}</text>
-                  </svg>
-                `)}`;
-              }}
-            />
+          {/* Navigation Arrows - 바깥쪽에 배치 */}
+          {hasMultipleMedia && (
+            <button
+              onClick={goToPrev}
+              className="absolute -left-16 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
           )}
 
-          {/* Navigation Arrows */}
+          {/* Media Content */}
+          <div className="relative">
+            {videoEmbed ? (
+              <iframe
+                src={
+                  videoEmbed.type === 'youtube'
+                    ? `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1`
+                    : `https://player.vimeo.com/video/${videoEmbed.id}?autoplay=1`
+                }
+                className="w-[80vw] max-w-[960px] aspect-video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <img
+                src={currentMedia}
+                alt={`${product.name} - ${currentIndex + 1}`}
+                className="max-w-[80vw] max-h-[85vh] object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = `data:image/svg+xml,${encodeURIComponent(`
+                    <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+                      <rect fill="#111" width="400" height="300"/>
+                      <text fill="#444" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="150">${product.name}</text>
+                    </svg>
+                  `)}`;
+                }}
+              />
+            )}
+          </div>
+
+          {/* Navigation Arrow - Right */}
           {hasMultipleMedia && (
-            <>
-              <button
-                onClick={goToPrev}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={goToNext}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </>
+            <button
+              onClick={goToNext}
+              className="absolute -right-16 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           )}
 
           {/* Dots Indicator */}

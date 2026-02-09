@@ -42,12 +42,15 @@ export default function AdminPage() {
   const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
   const [landingEnterImage, setLandingEnterImage] = useState<string | null>(null);
   const [gridBackgroundColor, setGridBackgroundColor] = useState('#000000');
+  const [headerLogoImage, setHeaderLogoImage] = useState<string | null>(null);
+  const [isUploadingHeaderLogo, setIsUploadingHeaderLogo] = useState(false);
   const [isUploadingLandingLogo, setIsUploadingLandingLogo] = useState(false);
   const [isUploadingLandingBg, setIsUploadingLandingBg] = useState(false);
   const [isUploadingLandingEnter, setIsUploadingLandingEnter] = useState(false);
   const [isSavingLandingSettings, setIsSavingLandingSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const companyFileInputRef = useRef<HTMLInputElement>(null);
+  const headerLogoInputRef = useRef<HTMLInputElement>(null);
   const landingLogoInputRef = useRef<HTMLInputElement>(null);
   const landingBgInputRef = useRef<HTMLInputElement>(null);
   const landingEnterInputRef = useRef<HTMLInputElement>(null);
@@ -94,6 +97,7 @@ export default function AdminPage() {
       setLandingBackgroundType(data.landingBackgroundType || 'tile');
       setLandingEnterImage(data.landingEnterImage || null);
       setGridBackgroundColor(data.gridBackgroundColor || '#000000');
+      setHeaderLogoImage(data.headerLogoImage || null);
       setExternalLinks(data.externalLinks || []);
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -144,7 +148,7 @@ export default function AdminPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, externalLinks }),
+        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, headerLogoImage, externalLinks }),
       });
       if (!res.ok) throw new Error('Failed to save landing settings');
       showMessage('success', '랜딩페이지 설정이 저장되었습니다.');
@@ -1542,6 +1546,88 @@ export default function AdminPage() {
                 </div>
                 <p className="mt-2 text-xs text-white/30">
                   포트폴리오 그리드 화면의 배경색을 설정합니다.
+                </p>
+              </div>
+
+              {/* 헤더 로고 이미지 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  포트폴리오 헤더 로고
+                </label>
+
+                {headerLogoImage && (
+                  <div className="mb-3 p-4 bg-black rounded-lg border border-white/10">
+                    <div className="flex items-center justify-center">
+                      <img
+                        src={headerLogoImage}
+                        alt="헤더 로고 미리보기"
+                        className="max-h-12 object-contain"
+                      />
+                    </div>
+                    <div className="flex justify-center mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setHeaderLogoImage(null)}
+                        className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        로고 삭제 (기본 텍스트로 복원)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  ref={headerLogoInputRef}
+                  type="file"
+                  accept="image/*,.svg"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    setIsUploadingHeaderLogo(true);
+                    try {
+                      const formDataUpload = new FormData();
+                      formDataUpload.append('file', file);
+                      const uploadRes = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formDataUpload,
+                      });
+                      if (!uploadRes.ok) throw new Error('Upload failed');
+                      const uploadData = await uploadRes.json();
+                      setHeaderLogoImage(uploadData.url);
+                    } catch {
+                      showMessage('error', '이미지 업로드에 실패했습니다.');
+                    } finally {
+                      setIsUploadingHeaderLogo(false);
+                      if (headerLogoInputRef.current) {
+                        headerLogoInputRef.current.value = '';
+                      }
+                    }
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => headerLogoInputRef.current?.click()}
+                  disabled={isUploadingHeaderLogo}
+                  className="w-full px-4 py-3 border-2 border-dashed border-white/20 hover:border-white/40 rounded-lg transition-colors text-white/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingHeaderLogo ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      업로드 중...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {headerLogoImage ? '헤더 로고 변경' : '헤더 로고 업로드'}
+                    </span>
+                  )}
+                </button>
+                <p className="mt-2 text-xs text-white/30">
+                  포트폴리오 헤더의 &quot;THEXEN&quot; 텍스트 대신 표시될 로고 이미지입니다.
                 </p>
               </div>
 

@@ -38,6 +38,7 @@ export default function Home() {
   const [landingBackgroundType, setLandingBackgroundType] = useState<'tile' | 'cover'>('tile');
   const [landingEnterImage, setLandingEnterImage] = useState<string | null>(null);
   const [gridBackgroundColor, setGridBackgroundColor] = useState('#000000');
+  const [headerLogoImage, setHeaderLogoImage] = useState<string | null>(null);
   const [externalLinks, setExternalLinks] = useState<{image: string, url: string}[]>([]);
   const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
   const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -82,6 +83,7 @@ export default function Home() {
         setLandingBackgroundType(data.landingBackgroundType || 'tile');
         setLandingEnterImage(data.landingEnterImage || null);
         setGridBackgroundColor(data.gridBackgroundColor || '#000000');
+        setHeaderLogoImage(data.headerLogoImage || null);
         setExternalLinks(data.externalLinks || []);
       })
       .catch((err) => {
@@ -352,9 +354,13 @@ export default function Home() {
       >
         <button
           onClick={() => setShowCompanyModal(true)}
-          className="text-lg md:text-xl font-black text-white tracking-tighter transition-colors hover:text-white/80 cursor-pointer"
+          className="transition-colors hover:opacity-80 cursor-pointer"
         >
-          THEXEN
+          {headerLogoImage ? (
+            <img src={headerLogoImage} alt="Logo" className="max-h-8 max-w-[140px] object-contain" />
+          ) : (
+            <span className="text-lg md:text-xl font-black text-white tracking-tighter">THEXEN</span>
+          )}
         </button>
         <div className="flex items-center gap-2">
           {externalLinks.filter(link => link.image && link.url).map((link, idx) => (
@@ -376,9 +382,9 @@ export default function Home() {
         className={`flex-1 overflow-hidden ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}
       >
         {isMobile && !isLandscape ? (
-          <MobileHexGrid products={products} onProductClick={handleProductClick} />
+          <MobileHexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
         ) : (
-          <HexGrid products={products} onProductClick={handleProductClick} />
+          <HexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
         )}
       </div>
 

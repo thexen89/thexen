@@ -34,6 +34,7 @@ model SiteSettings {
   landingBackgroundType String?  // 'tile' | 'cover' - 타일링 또는 전체 커버
   landingEnterImage String?  // 엔터 버튼 이미지 URL
   gridBackgroundColor String?  // 그리드 배경색 (hex)
+  headerLogoImage String?  // 포트폴리오 헤더 로고 이미지
   externalLinks   Json?    // 외부 링크 버튼들 [{image, url}]
   updatedAt       DateTime @updatedAt
 }

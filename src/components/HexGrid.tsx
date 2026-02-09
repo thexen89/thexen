@@ -13,6 +13,7 @@ interface ClickPosition {
 interface HexGridProps {
   products: Product[];
   onProductClick: (product: Product, position?: ClickPosition) => void;
+  backgroundColor?: string;
 }
 
 const ITEM_SIZE = 90; // 원 크기
@@ -24,7 +25,7 @@ const MIN_SCALE = 1.0; // 최소 비율
 const PADDING = 60; // 좌우 동일 여백
 const MAX_COLS = 6; // 최대 열 개수 (B 스타일 - 한 줄에 6개)
 
-export default function HexGrid({ products, onProductClick }: HexGridProps) {
+export default function HexGrid({ products, onProductClick, backgroundColor = '#000000' }: HexGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(10);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -128,7 +129,8 @@ export default function HexGrid({ products, onProductClick }: HexGridProps) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-y-auto bg-black"
+      className="w-full h-full overflow-y-auto"
+      style={{ backgroundColor }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >

@@ -12,6 +12,7 @@ interface ClickPosition {
 interface MobileHexGridProps {
   products: Product[];
   onProductClick: (product: Product, position?: ClickPosition) => void;
+  backgroundColor?: string;
 }
 
 interface GridItem {
@@ -35,7 +36,7 @@ const FRICTION = 0.92;
 const MIN_VELOCITY = 0.5;
 const X_SPRING_BACK = 0.85; // X축 스프링백 계수
 
-export default function MobileHexGrid({ products, onProductClick }: MobileHexGridProps) {
+export default function MobileHexGrid({ products, onProductClick, backgroundColor = '#000000' }: MobileHexGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -513,7 +514,7 @@ export default function MobileHexGrid({ products, onProductClick }: MobileHexGri
   }, [requestRender]);
 
   return (
-    <div ref={containerRef} className="w-full h-full overflow-hidden bg-black touch-none">
+    <div ref={containerRef} className="w-full h-full overflow-hidden touch-none" style={{ backgroundColor }}>
       <canvas
         ref={canvasRef}
         className="cursor-grab active:cursor-grabbing"
