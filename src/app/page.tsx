@@ -363,17 +363,26 @@ export default function Home() {
           )}
         </button>
         <div className="flex items-center gap-2">
-          {externalLinks.filter(link => link.image && link.url).map((link, idx) => (
-            <a
-              key={idx}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20"
-            >
-              <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
-            </a>
-          ))}
+          {externalLinks.filter(link => link.image).map((link, idx) =>
+            link.url ? (
+              <a
+                key={idx}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20"
+              >
+                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+              </a>
+            ) : (
+              <div
+                key={idx}
+                className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
+              >
+                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+              </div>
+            )
+          )}
         </div>
       </header>
 
