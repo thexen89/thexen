@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Product } from '@/lib/types';
 import AdminHexGrid from '@/components/AdminHexGrid';
 import AdminMobileHexGrid from '@/components/AdminMobileHexGrid';
@@ -14,6 +14,72 @@ const EFFECT_OPTIONS: { value: EffectType; label: string; icon: string }[] = [
   { value: 'leaves', label: '낙엽', icon: '🍂' },
   { value: 'fireworks', label: '불꽃놀이', icon: '🎆' },
 ];
+
+function PanelPositionDragger2D({ x, y, onChange, label }: { x: number; y: number; onChange: (x: number, y: number) => void; label: string }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const calcPos = useCallback((clientX: number, clientY: number) => {
+    if (!trackRef.current) return { x, y };
+    const rect = trackRef.current.getBoundingClientRect();
+    const px = Math.round(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
+    const py = Math.round(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
+    return { x: px, y: py };
+  }, [x, y]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault();
+      const cx = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const cy = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const pos = calcPos(cx, cy);
+      onChange(pos.x, pos.y);
+    };
+    const handleUp = () => setIsDragging(false);
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    document.addEventListener('touchmove', handleMove, { passive: false });
+    document.addEventListener('touchend', handleUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleUp);
+    };
+  }, [isDragging, onChange, calcPos]);
+
+  const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+    setIsDragging(true);
+    const cx = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const cy = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const pos = calcPos(cx, cy);
+    onChange(pos.x, pos.y);
+  };
+
+  return (
+    <div
+      ref={trackRef}
+      className="relative w-[120px] h-[200px] bg-white/5 border border-white/20 rounded-lg cursor-pointer select-none"
+      onMouseDown={handleStart}
+      onTouchStart={handleStart}
+    >
+      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10" />
+      <div className="absolute left-0 right-0 top-1/2 h-px bg-white/10" />
+      <div
+        className={`absolute w-8 h-8 rounded-full border-2 flex items-center justify-center text-[7px] font-bold transition-colors ${
+          isDragging ? 'border-white bg-white/30 text-white' : 'border-white/50 bg-white/10 text-white/60'
+        }`}
+        style={{
+          left: `clamp(0px, calc(${x}% - 16px), calc(100% - 32px))`,
+          top: `clamp(0px, calc(${y}% - 16px), calc(100% - 32px))`,
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -57,6 +123,10 @@ export default function AdminPage() {
   const [externalLinks, setExternalLinks] = useState<{image: string, url: string}[]>([]);
   const [isUploadingExternalLink, setIsUploadingExternalLink] = useState<number | null>(null);
   const externalLinkInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [leftPanelPositionX, setLeftPanelPositionX] = useState(50);
+  const [leftPanelPositionY, setLeftPanelPositionY] = useState(50);
+  const [rightPanelPositionX, setRightPanelPositionX] = useState(50);
+  const [rightPanelPositionY, setRightPanelPositionY] = useState(50);
 
   // 모바일 감지
   useEffect(() => {
@@ -99,6 +169,10 @@ export default function AdminPage() {
       setGridBackgroundColor(data.gridBackgroundColor || '#000000');
       setHeaderLogoImage(data.headerLogoImage || null);
       setExternalLinks(data.externalLinks || []);
+      setLeftPanelPositionX(data.leftPanelPositionX ?? 50);
+      setLeftPanelPositionY(data.leftPanelPositionY ?? 50);
+      setRightPanelPositionX(data.rightPanelPositionX ?? 50);
+      setRightPanelPositionY(data.rightPanelPositionY ?? 50);
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -148,7 +222,7 @@ export default function AdminPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, headerLogoImage, externalLinks }),
+        body: JSON.stringify({ landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, headerLogoImage, externalLinks, leftPanelPositionX, leftPanelPositionY, rightPanelPositionX, rightPanelPositionY }),
       });
       if (!res.ok) throw new Error('Failed to save landing settings');
       showMessage('success', '랜딩페이지 설정이 저장되었습니다.');
@@ -1732,6 +1806,28 @@ export default function AdminPage() {
                 <p className="mt-2 text-xs text-white/30">
                   메인 화면 우측 상단에 이미지 버튼으로 표시됩니다.
                 </p>
+              </div>
+
+              {/* 패널 위치 조정 */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-3">
+                  패널 위치 조정 (PC)
+                </label>
+                <p className="text-xs text-white/40 mb-4">
+                  왼쪽 로고와 오른쪽 링크 버튼의 위치를 드래그로 조정합니다.
+                </p>
+                <div className="flex gap-6 justify-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-xs text-white/50">왼쪽 (로고)</span>
+                    <PanelPositionDragger2D x={leftPanelPositionX} y={leftPanelPositionY} onChange={(nx, ny) => { setLeftPanelPositionX(nx); setLeftPanelPositionY(ny); }} label="Logo" />
+                    <span className="text-xs text-white/30 font-mono">{leftPanelPositionX}, {leftPanelPositionY}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-xs text-white/50">오른쪽 (링크)</span>
+                    <PanelPositionDragger2D x={rightPanelPositionX} y={rightPanelPositionY} onChange={(nx, ny) => { setRightPanelPositionX(nx); setRightPanelPositionY(ny); }} label="Links" />
+                    <span className="text-xs text-white/30 font-mono">{rightPanelPositionX}, {rightPanelPositionY}</span>
+                  </div>
+                </div>
               </div>
 
               {/* 미리보기 안내 */}

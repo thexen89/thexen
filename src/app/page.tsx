@@ -39,6 +39,10 @@ export default function Home() {
   const [gridBackgroundColor, setGridBackgroundColor] = useState('#000000');
   const [headerLogoImage, setHeaderLogoImage] = useState<string | null>(null);
   const [externalLinks, setExternalLinks] = useState<{image: string, url: string}[]>([]);
+  const [leftPanelPositionX, setLeftPanelPositionX] = useState(50);
+  const [leftPanelPositionY, setLeftPanelPositionY] = useState(50);
+  const [rightPanelPositionX, setRightPanelPositionX] = useState(50);
+  const [rightPanelPositionY, setRightPanelPositionY] = useState(50);
   const [gridIdleCountdown, setGridIdleCountdown] = useState<number | null>(null);
   const gridIdleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const gridCountdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -84,6 +88,10 @@ export default function Home() {
         setGridBackgroundColor(data.gridBackgroundColor || '#000000');
         setHeaderLogoImage(data.headerLogoImage || null);
         setExternalLinks(data.externalLinks || []);
+        setLeftPanelPositionX(data.leftPanelPositionX ?? 50);
+        setLeftPanelPositionY(data.leftPanelPositionY ?? 50);
+        setRightPanelPositionX(data.rightPanelPositionX ?? 50);
+        setRightPanelPositionY(data.rightPanelPositionY ?? 50);
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -381,18 +389,23 @@ export default function Home() {
 
       {/* PC: 왼쪽 영역 - About / 로고 */}
       {!(isMobile && !isLandscape) && (
-        <div className="flex-1 min-w-[60px] z-20 flex flex-col items-center justify-center">
-          <button
-            onClick={() => setShowCompanyModal(true)}
-            className="transition-colors hover:opacity-80 cursor-pointer"
-            style={{ writingMode: 'vertical-rl' }}
+        <div className="flex-1 min-w-[60px] z-20 relative">
+          <div
+            className="absolute"
+            style={{ left: `${leftPanelPositionX}%`, top: `${leftPanelPositionY}%`, transform: `translate(-50%, -50%)` }}
           >
-            {headerLogoImage ? (
-              <img src={headerLogoImage} alt="Logo" className="max-h-[140px] max-w-8 object-contain" />
-            ) : (
-              <span className="text-sm font-black text-white tracking-widest">About THEXEN</span>
-            )}
-          </button>
+            <button
+              onClick={() => setShowCompanyModal(true)}
+              className="transition-colors hover:opacity-80 cursor-pointer"
+              style={{ writingMode: 'vertical-rl' }}
+            >
+              {headerLogoImage ? (
+                <img src={headerLogoImage} alt="Logo" className="max-h-[140px] max-w-8 object-contain" />
+              ) : (
+                <span className="text-sm font-black text-white tracking-widest">About THEXEN</span>
+              )}
+            </button>
+          </div>
         </div>
       )}
 
@@ -409,19 +422,26 @@ export default function Home() {
 
       {/* PC: 오른쪽 영역 - 외부 링크 */}
       {!(isMobile && !isLandscape) && (
-        <div className="flex-1 min-w-[60px] z-20 flex flex-col items-center justify-center gap-3">
-          {externalLinks.filter(link => link.image).map((link, idx) =>
-            link.url ? (
-              <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
-                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
-              </a>
-            ) : (
-              <div key={idx} className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
-                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
-              </div>
-            )
-          )}
+        <div className="flex-1 min-w-[60px] z-20 relative">
+          <div
+            className="absolute"
+            style={{ left: `${rightPanelPositionX}%`, top: `${rightPanelPositionY}%`, transform: `translate(-50%, -50%)` }}
+          >
+            <div className="flex items-center gap-3">
+              {externalLinks.filter(link => link.image).map((link, idx) =>
+                link.url ? (
+                  <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
+                    className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
+                    <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+                  </a>
+                ) : (
+                  <div key={idx} className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+                    <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                )
+              )}
+            </div>
+          </div>
         </div>
       )}
 

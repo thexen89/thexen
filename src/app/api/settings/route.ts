@@ -37,7 +37,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { seasonalEffect, effectEnabled, companyImages, companyDescription, landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, headerLogoImage, externalLinks } = body;
+    const { seasonalEffect, effectEnabled, companyImages, companyDescription, landingLogoImage, landingBackgroundImage, landingBackgroundType, landingEnterImage, gridBackgroundColor, headerLogoImage, externalLinks, leftPanelPositionX, leftPanelPositionY, rightPanelPositionX, rightPanelPositionY } = body;
 
     // 업데이트할 데이터 구성 (전달된 필드만 업데이트)
     const updateData: Record<string, unknown> = {};
@@ -52,6 +52,10 @@ export async function PUT(request: Request) {
     if (gridBackgroundColor !== undefined) updateData.gridBackgroundColor = gridBackgroundColor;
     if (headerLogoImage !== undefined) updateData.headerLogoImage = headerLogoImage;
     if (externalLinks !== undefined) updateData.externalLinks = externalLinks;
+    if (leftPanelPositionX !== undefined) updateData.leftPanelPositionX = leftPanelPositionX;
+    if (leftPanelPositionY !== undefined) updateData.leftPanelPositionY = leftPanelPositionY;
+    if (rightPanelPositionX !== undefined) updateData.rightPanelPositionX = rightPanelPositionX;
+    if (rightPanelPositionY !== undefined) updateData.rightPanelPositionY = rightPanelPositionY;
 
     const settings = await prisma.siteSettings.upsert({
       where: { id: DEFAULT_ID },
@@ -69,6 +73,10 @@ export async function PUT(request: Request) {
         gridBackgroundColor: gridBackgroundColor ?? null,
         headerLogoImage: headerLogoImage ?? null,
         externalLinks: externalLinks ?? null,
+        leftPanelPositionX: leftPanelPositionX ?? 50,
+        leftPanelPositionY: leftPanelPositionY ?? 50,
+        rightPanelPositionX: rightPanelPositionX ?? 50,
+        rightPanelPositionY: rightPanelPositionY ?? 50,
       },
     });
 
