@@ -18,7 +18,6 @@ interface ClickPosition {
   size: number;
 }
 
-const HEADER_HEIGHT = 60; // 헤더 높이 (px)
 const IDLE_TIMEOUT = 300000; // 5분
 
 export default function Home() {
@@ -343,52 +342,63 @@ export default function Home() {
   }
 
   return (
-    <main className="h-screen w-screen overflow-hidden relative flex flex-col" style={{ backgroundColor: gridBackgroundColor }}>
+    <main className={`h-screen w-screen overflow-hidden relative flex ${isMobile && !isLandscape ? 'flex-col' : 'flex-row'}`} style={{ backgroundColor: gridBackgroundColor }}>
       {/* 시즌 효과 */}
       <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
 
-      {/* Header - 고정 영역 */}
-      <header
-        className="flex-shrink-0 z-20 px-4 md:px-6 flex items-center justify-between border-b border-white/10"
-        style={{ height: HEADER_HEIGHT, backgroundColor: gridBackgroundColor }}
-      >
-        <button
-          onClick={() => setShowCompanyModal(true)}
-          className="transition-colors hover:opacity-80 cursor-pointer"
+      {/* 모바일: 기존 헤더 */}
+      {isMobile && !isLandscape && (
+        <header
+          className="flex-shrink-0 z-20 px-4 flex items-center justify-between border-b border-white/10"
+          style={{ height: 60, backgroundColor: gridBackgroundColor }}
         >
-          {headerLogoImage ? (
-            <img src={headerLogoImage} alt="Logo" className="max-h-8 max-w-[140px] object-contain" />
-          ) : (
-            <span className="text-lg md:text-xl font-black text-white tracking-tighter">THEXEN</span>
-          )}
-        </button>
-        <div className="flex items-center gap-2">
-          {externalLinks.filter(link => link.image).map((link, idx) =>
-            link.url ? (
-              <a
-                key={idx}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20"
-              >
-                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
-              </a>
+          <button
+            onClick={() => setShowCompanyModal(true)}
+            className="transition-colors hover:opacity-80 cursor-pointer"
+          >
+            {headerLogoImage ? (
+              <img src={headerLogoImage} alt="Logo" className="max-h-8 max-w-[140px] object-contain" />
             ) : (
-              <div
-                key={idx}
-                className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
-              >
-                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
-              </div>
-            )
-          )}
-        </div>
-      </header>
+              <span className="text-lg font-black text-white tracking-tighter">THEXEN</span>
+            )}
+          </button>
+          <div className="flex items-center gap-2">
+            {externalLinks.filter(link => link.image).map((link, idx) =>
+              link.url ? (
+                <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
+                  <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+                </a>
+              ) : (
+                <div key={idx} className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+                  <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+                </div>
+              )
+            )}
+          </div>
+        </header>
+      )}
 
-      {/* Hex Grid - PC or Mobile (with expanding animation) */}
+      {/* PC: 왼쪽 영역 - About / 로고 */}
+      {!(isMobile && !isLandscape) && (
+        <div className="flex-1 min-w-[60px] z-20 flex flex-col items-center justify-center">
+          <button
+            onClick={() => setShowCompanyModal(true)}
+            className="transition-colors hover:opacity-80 cursor-pointer"
+            style={{ writingMode: 'vertical-rl' }}
+          >
+            {headerLogoImage ? (
+              <img src={headerLogoImage} alt="Logo" className="max-h-[140px] max-w-8 object-contain" />
+            ) : (
+              <span className="text-sm font-black text-white tracking-widest">About THEXEN</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* 중앙 - 포트폴리오 그리드 (최대 1200px) */}
       <div
-        className={`flex-1 overflow-hidden ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}
+        className={`overflow-hidden ${isMobile && !isLandscape ? 'flex-1' : 'w-full max-w-[1200px]'} ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}
       >
         {isMobile && !isLandscape ? (
           <MobileHexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
@@ -396,6 +406,24 @@ export default function Home() {
           <HexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
         )}
       </div>
+
+      {/* PC: 오른쪽 영역 - 외부 링크 */}
+      {!(isMobile && !isLandscape) && (
+        <div className="flex-1 min-w-[60px] z-20 flex flex-col items-center justify-center gap-3">
+          {externalLinks.filter(link => link.image).map((link, idx) =>
+            link.url ? (
+              <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
+                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+              </a>
+            ) : (
+              <div key={idx} className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+                <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+              </div>
+            )
+          )}
+        </div>
+      )}
 
       {/* 회전 안내 오버레이 - 모바일 세로모드에서 표시 */}
       {showRotatePrompt && (

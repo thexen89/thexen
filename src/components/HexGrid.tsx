@@ -129,7 +129,7 @@ export default function HexGrid({ products, onProductClick, backgroundColor = '#
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-y-auto"
+      className="w-full h-full overflow-y-auto scrollbar-hide"
       style={{ backgroundColor }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
