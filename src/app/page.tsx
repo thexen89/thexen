@@ -374,11 +374,11 @@ export default function Home() {
             {externalLinks.filter(link => link.image).map((link, idx) =>
               link.url ? (
                 <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
+                  className="w-10 h-10 rounded-lg overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
                   <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
                 </a>
               ) : (
-                <div key={idx} className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+                <div key={idx} className="w-10 h-10 rounded-lg overflow-hidden border border-white/20">
                   <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
                 </div>
               )
@@ -431,11 +431,11 @@ export default function Home() {
               {externalLinks.filter(link => link.image).map((link, idx) =>
                 link.url ? (
                   <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
-                    className="w-10 h-10 rounded-full overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
+                    className="w-10 h-10 rounded-lg overflow-hidden hover:opacity-80 transition-opacity border border-white/20">
                     <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
                   </a>
                 ) : (
-                  <div key={idx} className="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+                  <div key={idx} className="w-10 h-10 rounded-lg overflow-hidden border border-white/20">
                     <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
                   </div>
                 )
