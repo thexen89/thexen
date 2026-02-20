@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Product } from '@/lib/types';
 import AdminHexGrid from '@/components/AdminHexGrid';
 import AdminMobileHexGrid from '@/components/AdminMobileHexGrid';
@@ -82,6 +83,7 @@ function PanelPositionDragger2D({ x, y, onChange, label }: { x: number; y: numbe
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -511,6 +513,16 @@ export default function AdminPage() {
                 </button>
               </div>
             )}
+
+            <button
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                router.push('/admin/login');
+              }}
+              className="px-3 py-2 bg-white/5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-xs md:text-sm"
+            >
+              로그아웃
+            </button>
 
             <button
               onClick={() => openModal()}
