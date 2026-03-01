@@ -787,7 +787,7 @@ export default function AdminPage() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={closeModal}>
-          <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto scrollbar-hide" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold">
                 {editingProduct ? '제품 수정' : '새 제품 추가'}
