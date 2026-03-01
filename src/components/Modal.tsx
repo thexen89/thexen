@@ -32,6 +32,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   const modalRef = useRef<HTMLDivElement>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // idle 타이머 초기화
   const resetIdleTimer = useCallback(() => {
@@ -87,6 +88,22 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     const totalItems = (product.videoUrl ? 1 : 0) + product.images.length;
     setCurrentIndex((prev) => (prev === totalItems - 1 ? 0 : prev + 1));
   }, [product]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) goToNext();
+      else goToPrev();
+      resetIdleTimer();
+    }
+  }, [goToNext, goToPrev, resetIdleTimer]);
 
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
@@ -249,12 +266,12 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
         </button>
 
         {/* Image/Video with Navigation */}
-        <div className="relative flex items-center justify-center">
+        <div className="relative flex items-center justify-center" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {/* Navigation Arrows - 바깥쪽에 배치 */}
           {hasMultipleMedia && (
             <button
               onClick={goToPrev}
-              className="absolute -left-16 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
+              className="absolute left-2 md:-left-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -278,7 +295,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
             ) : (
               <img
                 src={currentMedia}
-                alt={`${product.name} - ${currentIndex + 1}`}
+                alt={product.imageAlts?.[currentIndex] || `${product.name} - ${currentIndex + 1}`}
                 className="max-w-[80vw] max-h-[85vh] object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -297,7 +314,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           {hasMultipleMedia && (
             <button
               onClick={goToNext}
-              className="absolute -right-16 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
+              className="absolute right-2 md:-right-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -328,7 +345,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
               </h2>
               <p className="text-white/70 text-sm">{product.client}</p>
               {product.description && (
-                <p className="text-white/50 text-sm mt-2 line-clamp-2">
+                <p className="text-white/50 text-sm mt-2 whitespace-pre-line">
                   {product.description}
                 </p>
               )}

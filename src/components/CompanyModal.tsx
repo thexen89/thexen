@@ -19,6 +19,7 @@ export default function CompanyModal({ isOpen, onClose, onReturnToLanding, image
   const modalRef = useRef<HTMLDivElement>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // idle 타이머 초기화
   const resetIdleTimer = useCallback(() => {
@@ -67,6 +68,22 @@ export default function CompanyModal({ isOpen, onClose, onReturnToLanding, image
     if (images.length === 0) return;
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   }, [images.length]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) goToNext();
+      else goToPrev();
+      resetIdleTimer();
+    }
+  }, [goToNext, goToPrev, resetIdleTimer]);
 
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
@@ -209,7 +226,7 @@ export default function CompanyModal({ isOpen, onClose, onReturnToLanding, image
         </button>
 
         {/* Image/Content */}
-        <div className="relative flex items-center justify-center">
+        <div className="relative flex items-center justify-center" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {images.length > 0 ? (
             <img
               src={currentMedia}
@@ -294,7 +311,7 @@ export default function CompanyModal({ isOpen, onClose, onReturnToLanding, image
           {description && (
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
               <h2 className="text-xl font-bold text-white mb-2">THEXEN</h2>
-              <p className="text-white/70 text-sm line-clamp-3">
+              <p className="text-white/70 text-sm whitespace-pre-line">
                 {description}
               </p>
             </div>

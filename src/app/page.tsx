@@ -350,15 +350,15 @@ export default function Home() {
   }
 
   return (
-    <main className={`h-screen w-screen overflow-hidden relative flex ${isMobile && !isLandscape ? 'flex-col' : 'flex-row'}`} style={{ backgroundColor: gridBackgroundColor }}>
+    <main className={`h-screen w-screen overflow-hidden relative flex ${isMobile ? 'flex-col' : 'flex-row'}`} style={{ backgroundColor: gridBackgroundColor }}>
       {/* 시즌 효과 */}
       <SeasonalEffects effect={seasonalEffect} enabled={effectEnabled} />
 
-      {/* 모바일: 기존 헤더 */}
-      {isMobile && !isLandscape && (
+      {/* 모바일: 헤더 (가로/세로 모두 표시) */}
+      {isMobile && (
         <header
           className="flex-shrink-0 z-20 px-4 flex items-center justify-between border-b border-white/10"
-          style={{ height: 60, backgroundColor: gridBackgroundColor }}
+          style={{ height: isLandscape ? 44 : 60, backgroundColor: gridBackgroundColor }}
         >
           <button
             onClick={() => setShowCompanyModal(true)}
@@ -388,7 +388,7 @@ export default function Home() {
       )}
 
       {/* PC: 왼쪽 영역 - About / 로고 */}
-      {!(isMobile && !isLandscape) && (
+      {!isMobile && (
         <div className="flex-1 min-w-[60px] z-20 relative">
           <div
             className="absolute"
@@ -411,9 +411,9 @@ export default function Home() {
 
       {/* 중앙 - 포트폴리오 그리드 (최대 1200px) */}
       <div
-        className={`overflow-hidden ${isMobile && !isLandscape ? 'flex-1' : 'w-full max-w-[1200px]'} ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}
+        className={`overflow-hidden ${isMobile ? 'flex-1' : 'w-full max-w-[1200px]'} ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}
       >
-        {isMobile && !isLandscape ? (
+        {isMobile ? (
           <MobileHexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
         ) : (
           <HexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
@@ -421,7 +421,7 @@ export default function Home() {
       </div>
 
       {/* PC: 오른쪽 영역 - 외부 링크 */}
-      {!(isMobile && !isLandscape) && (
+      {!isMobile && (
         <div className="flex-1 min-w-[60px] z-20 relative">
           <div
             className="absolute"

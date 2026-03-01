@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Product } from '@/lib/types';
-import AdminHexGrid from '@/components/AdminHexGrid';
-import AdminMobileHexGrid from '@/components/AdminMobileHexGrid';
+import HexGrid from '@/components/HexGrid';
+import MobileHexGrid from '@/components/MobileHexGrid';
 
 type EffectType = 'snow' | 'cherry' | 'leaves' | 'fireworks' | null;
 
@@ -145,6 +145,7 @@ export default function AdminPage() {
     name: '',
     client: '',
     images: [] as string[],
+    imageAlts: [] as string[],
     thumbnailIndex: 0,
     description: '',
     showInfo: false,
@@ -262,6 +263,7 @@ export default function AdminPage() {
         name: product.name,
         client: product.client,
         images: product.images.length > 0 ? product.images : [],
+        imageAlts: product.imageAlts || product.images.map(() => ''),
         thumbnailIndex: product.thumbnailIndex,
         description: product.description,
         showInfo: product.showInfo || false,
@@ -273,6 +275,7 @@ export default function AdminPage() {
         name: '',
         client: '',
         images: [],
+        imageAlts: [],
         thumbnailIndex: 0,
         description: '',
         showInfo: false,
@@ -289,6 +292,7 @@ export default function AdminPage() {
       name: '',
       client: '',
       images: [],
+      imageAlts: [],
       thumbnailIndex: 0,
       description: '',
       showInfo: false,
@@ -557,19 +561,82 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
         {viewMode === 'grid' ? (
-          isMobile ? (
-            <AdminMobileHexGrid
-              products={products}
-              onReorder={handleReorder}
-              onProductClick={openModal}
-            />
-          ) : (
-            <AdminHexGrid
-              products={products}
-              onReorder={handleReorder}
-              onProductClick={openModal}
-            />
-          )
+          <div className={`h-full relative flex ${isMobile ? 'flex-col' : 'flex-row'}`} style={{ backgroundColor: gridBackgroundColor }}>
+            {/* 모바일: 로고 + 외부링크 헤더 (공개 페이지와 동일) */}
+            {isMobile && (
+              <div
+                className="flex-shrink-0 z-20 px-4 flex items-center justify-between border-b border-white/10"
+                style={{ height: 44, backgroundColor: gridBackgroundColor }}
+              >
+                <button
+                  onClick={() => setIsCompanySettingsOpen(true)}
+                  className="transition-colors hover:opacity-80 cursor-pointer"
+                >
+                  {headerLogoImage ? (
+                    <img src={headerLogoImage} alt="Logo" className="max-h-8 max-w-[140px] object-contain" />
+                  ) : (
+                    <span className="text-lg font-black text-white tracking-tighter">THEXEN</span>
+                  )}
+                </button>
+                <div className="flex items-center gap-2">
+                  {externalLinks.filter(link => link.image).map((link, idx) => (
+                    <div key={idx} className="w-10 h-10 rounded-lg overflow-hidden border border-white/20">
+                      <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PC: 왼쪽 영역 - About / 로고 (공개 페이지와 동일) */}
+            {!isMobile && (
+              <div className="flex-1 min-w-[60px] z-20 relative">
+                <div
+                  className="absolute"
+                  style={{ left: `${leftPanelPositionX}%`, top: `${leftPanelPositionY}%`, transform: 'translate(-50%, -50%)' }}
+                >
+                  <button
+                    onClick={() => setIsCompanySettingsOpen(true)}
+                    className="transition-colors hover:opacity-80 cursor-pointer"
+                    style={{ writingMode: 'vertical-rl' }}
+                  >
+                    {headerLogoImage ? (
+                      <img src={headerLogoImage} alt="Logo" className="max-h-[140px] max-w-8 object-contain" />
+                    ) : (
+                      <span className="text-sm font-black text-white tracking-widest">About THEXEN</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 중앙 - 포트폴리오 그리드 (공개 페이지와 동일 컴포넌트) */}
+            <div className={`overflow-hidden ${isMobile ? 'flex-1' : 'w-full max-w-[1200px]'}`}>
+              {isMobile ? (
+                <MobileHexGrid products={products} onProductClick={(product) => openModal(product)} onReorder={handleReorder} backgroundColor={gridBackgroundColor} />
+              ) : (
+                <HexGrid products={products} onProductClick={(product) => openModal(product)} onReorder={handleReorder} backgroundColor={gridBackgroundColor} />
+              )}
+            </div>
+
+            {/* PC: 오른쪽 영역 - 외부 링크 (공개 페이지와 동일) */}
+            {!isMobile && (
+              <div className="flex-1 min-w-[60px] z-20 relative">
+                <div
+                  className="absolute"
+                  style={{ left: `${rightPanelPositionX}%`, top: `${rightPanelPositionY}%`, transform: 'translate(-50%, -50%)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    {externalLinks.filter(link => link.image).map((link, idx) => (
+                      <div key={idx} className="w-10 h-10 rounded-lg overflow-hidden border border-white/20">
+                        <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="h-full overflow-auto p-4">
             <div className="max-w-5xl mx-auto">
@@ -773,56 +840,69 @@ export default function AdminPage() {
                 {formData.images.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {formData.images.map((img, idx) => (
-                      <div
-                        key={idx}
-                        className={`relative group w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                          formData.thumbnailIndex === idx
-                            ? 'border-white'
-                            : 'border-white/20'
-                        }`}
-                      >
-                        <img
-                          src={img}
-                          alt={`이미지 ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                          {formData.thumbnailIndex !== idx && (
+                      <div key={idx} className="flex flex-col items-center gap-1">
+                        <div
+                          className={`relative group w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                            formData.thumbnailIndex === idx
+                              ? 'border-white'
+                              : 'border-white/20'
+                          }`}
+                        >
+                          <img
+                            src={img}
+                            alt={formData.imageAlts[idx] || `이미지 ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            {formData.thumbnailIndex !== idx && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, thumbnailIndex: idx })}
+                                className="p-1.5 bg-white rounded text-black text-xs"
+                                title="썸네일로 설정"
+                              >
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => setFormData({ ...formData, thumbnailIndex: idx })}
-                              className="p-1.5 bg-white rounded text-black text-xs"
-                              title="썸네일로 설정"
+                              onClick={() => {
+                                const newImages = formData.images.filter((_, i) => i !== idx);
+                                const newAlts = formData.imageAlts.filter((_, i) => i !== idx);
+                                const newThumbnailIndex = formData.thumbnailIndex >= newImages.length
+                                  ? Math.max(0, newImages.length - 1)
+                                  : formData.thumbnailIndex > idx
+                                    ? formData.thumbnailIndex - 1
+                                    : formData.thumbnailIndex;
+                                setFormData({ ...formData, images: newImages, imageAlts: newAlts, thumbnailIndex: newThumbnailIndex });
+                              }}
+                              className="p-1.5 bg-red-500 rounded text-white text-xs"
+                              title="삭제"
                             >
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newImages = formData.images.filter((_, i) => i !== idx);
-                              const newThumbnailIndex = formData.thumbnailIndex >= newImages.length
-                                ? Math.max(0, newImages.length - 1)
-                                : formData.thumbnailIndex > idx
-                                  ? formData.thumbnailIndex - 1
-                                  : formData.thumbnailIndex;
-                              setFormData({ ...formData, images: newImages, thumbnailIndex: newThumbnailIndex });
-                            }}
-                            className="p-1.5 bg-red-500 rounded text-white text-xs"
-                            title="삭제"
-                          >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                        {formData.thumbnailIndex === idx && (
-                          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-white text-black text-[10px] font-medium rounded">
-                            썸네일
                           </div>
-                        )}
+                          {formData.thumbnailIndex === idx && (
+                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-white text-black text-[10px] font-medium rounded">
+                              썸네일
+                            </div>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={formData.imageAlts[idx] || ''}
+                          onChange={(e) => {
+                            const newAlts = [...formData.imageAlts];
+                            newAlts[idx] = e.target.value;
+                            setFormData({ ...formData, imageAlts: newAlts });
+                          }}
+                          className="w-20 px-1 py-0.5 text-[10px] bg-white/5 border border-white/10 rounded text-white placeholder-white/30 text-center"
+                          placeholder="Alt 텍스트"
+                        />
                       </div>
                     ))}
                   </div>
@@ -860,6 +940,7 @@ export default function AdminPage() {
                       setFormData(prev => ({
                         ...prev,
                         images: [...prev.images, ...newImages],
+                        imageAlts: [...prev.imageAlts, ...newImages.map(() => '')],
                       }));
                       showMessage('success', `${newImages.length}개 이미지 업로드 완료`);
                     } catch (err) {
@@ -916,6 +997,12 @@ export default function AdminPage() {
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30 resize-none"
                   placeholder="제품에 대한 설명을 입력하세요."
                 />
+                {formData.description && (
+                  <div className="mt-2 p-3 bg-black/60 rounded-lg border border-white/10">
+                    <p className="text-[10px] text-white/40 mb-1">실제 표시 미리보기</p>
+                    <p className="text-white/50 text-sm whitespace-pre-line">{formData.description}</p>
+                  </div>
+                )}
               </div>
 
               {/* 비디오 URL */}
@@ -1232,6 +1319,12 @@ export default function AdminPage() {
                   className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 text-white placeholder-white/30 resize-none"
                   placeholder="회사에 대한 간단한 설명을 입력하세요."
                 />
+                {companyDescription && (
+                  <div className="mt-2 p-3 bg-black/60 rounded-lg border border-white/10">
+                    <p className="text-[10px] text-white/40 mb-1">실제 표시 미리보기</p>
+                    <p className="text-white/70 text-sm whitespace-pre-line">{companyDescription}</p>
+                  </div>
+                )}
               </div>
 
               {/* 미리보기 안내 */}

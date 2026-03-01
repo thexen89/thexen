@@ -3,6 +3,7 @@ export interface Product {
   name: string;
   client: string;
   images: string[];
+  imageAlts: string[];
   thumbnailIndex: number;
   description: string;
   priority: number;

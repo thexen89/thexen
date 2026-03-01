@@ -11,6 +11,7 @@ model Product {
   name           String
   client         String
   images         String[]
+  imageAlts      String[]
   thumbnailIndex Int      @default(0)
   description    String
   priority       Int
