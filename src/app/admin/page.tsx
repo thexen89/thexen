@@ -548,7 +548,7 @@ export default function AdminPage() {
       {/* Message Toast */}
       {message && (
         <div
-          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg border ${
+          className={`fixed top-4 right-4 z-[400] px-6 py-3 rounded-lg shadow-lg border ${
             message.type === 'success'
               ? 'bg-black border-white/20 text-white'
               : 'bg-red-950 border-red-500/50 text-red-200'
@@ -786,7 +786,7 @@ export default function AdminPage() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold">
@@ -1087,7 +1087,7 @@ export default function AdminPage() {
 
       {/* Settings Modal */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-md">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold">시즌 효과 설정</h3>
@@ -1183,7 +1183,7 @@ export default function AdminPage() {
 
       {/* Company Settings Modal */}
       {isCompanySettingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
               <h3 className="text-lg font-semibold">회사 정보 설정</h3>
@@ -1360,7 +1360,7 @@ export default function AdminPage() {
 
       {/* Landing Settings Modal */}
       {isLandingSettingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-zinc-950 border border-white/10 rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
               <h3 className="text-lg font-semibold">랜딩페이지 설정</h3>
