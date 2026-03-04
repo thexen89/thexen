@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import HexGrid from '@/components/HexGrid';
 import MobileHexGrid from '@/components/MobileHexGrid';
-import Modal from '@/components/Modal';
-import CompanyModal from '@/components/CompanyModal';
 import SeasonalEffects from '@/components/SeasonalEffects';
 import { Product } from '@/lib/types';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { useFullscreenLandscape } from '@/hooks/useFullscreenLandscape';
+
+const Modal = lazy(() => import('@/components/Modal'));
+const CompanyModal = lazy(() => import('@/components/CompanyModal'));
 
 type ViewState = 'landing' | 'collapsing' | 'expanding' | 'grid';
 type EffectType = 'snow' | 'cherry' | 'leaves' | 'fireworks' | null;
@@ -59,43 +61,33 @@ export default function Home() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // 제품 + 설정 병렬 로드
   useEffect(() => {
-    fetch('/api/products')
-      .then((res) => res.json())
-      .then((data) => {
-        setProducts(data.products || []);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load products:', err);
-        setIsLoading(false);
-      });
-  }, []);
-
-  // 시즌 효과 및 회사 정보, 랜딩페이지 설정 로드
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((data) => {
-        setSeasonalEffect(data.seasonalEffect as EffectType);
-        setEffectEnabled(data.effectEnabled);
-        setCompanyImages(data.companyImages || []);
-        setCompanyDescription(data.companyDescription || null);
-        setLandingLogoImage(data.landingLogoImage || null);
-        setLandingBackgroundImage(data.landingBackgroundImage || null);
-        setLandingBackgroundType(data.landingBackgroundType || 'tile');
-        setLandingEnterImage(data.landingEnterImage || null);
-        setGridBackgroundColor(data.gridBackgroundColor || '#000000');
-        setHeaderLogoImage(data.headerLogoImage || null);
-        setExternalLinks(data.externalLinks || []);
-        setLeftPanelPositionX(data.leftPanelPositionX ?? 50);
-        setLeftPanelPositionY(data.leftPanelPositionY ?? 50);
-        setRightPanelPositionX(data.rightPanelPositionX ?? 50);
-        setRightPanelPositionY(data.rightPanelPositionY ?? 50);
-      })
-      .catch((err) => {
-        console.error('Failed to load settings:', err);
-      });
+    Promise.all([
+      fetch('/api/products').then(res => res.json()),
+      fetch('/api/settings').then(res => res.json()),
+    ]).then(([productsData, settingsData]) => {
+      setProducts(productsData.products || []);
+      setSeasonalEffect(settingsData.seasonalEffect as EffectType);
+      setEffectEnabled(settingsData.effectEnabled);
+      setCompanyImages(settingsData.companyImages || []);
+      setCompanyDescription(settingsData.companyDescription || null);
+      setLandingLogoImage(settingsData.landingLogoImage || null);
+      setLandingBackgroundImage(settingsData.landingBackgroundImage || null);
+      setLandingBackgroundType(settingsData.landingBackgroundType || 'tile');
+      setLandingEnterImage(settingsData.landingEnterImage || null);
+      setGridBackgroundColor(settingsData.gridBackgroundColor || '#000000');
+      setHeaderLogoImage(settingsData.headerLogoImage || null);
+      setExternalLinks(settingsData.externalLinks || []);
+      setLeftPanelPositionX(settingsData.leftPanelPositionX ?? 50);
+      setLeftPanelPositionY(settingsData.leftPanelPositionY ?? 50);
+      setRightPanelPositionX(settingsData.rightPanelPositionX ?? 50);
+      setRightPanelPositionY(settingsData.rightPanelPositionY ?? 50);
+      setIsLoading(false);
+    }).catch((err) => {
+      console.error('Failed to load data:', err);
+      setIsLoading(false);
+    });
   }, []);
 
   // 랜딩 클릭 → 수렴 → 펼침 애니메이션
@@ -487,21 +479,27 @@ export default function Home() {
       )}
 
       {/* Product Modal */}
-      <Modal
-        product={selectedProduct}
-        onClose={handleCloseModal}
-        onReturnToLanding={handleReturnToLanding}
-        originPosition={clickPosition}
-      />
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <Modal
+            product={selectedProduct}
+            onClose={handleCloseModal}
+            onReturnToLanding={handleReturnToLanding}
+            originPosition={clickPosition}
+          />
+        </Suspense>
+      </ErrorBoundary>
 
       {/* Company Modal */}
-      <CompanyModal
-        isOpen={showCompanyModal}
-        onClose={() => setShowCompanyModal(false)}
-        onReturnToLanding={handleReturnToLanding}
-        images={companyImages}
-        description={companyDescription}
-      />
+      <Suspense fallback={null}>
+        <CompanyModal
+          isOpen={showCompanyModal}
+          onClose={() => setShowCompanyModal(false)}
+          onReturnToLanding={handleReturnToLanding}
+          images={companyImages}
+          description={companyDescription}
+        />
+      </Suspense>
 
       <style jsx>{`
         @keyframes expand-from-center {

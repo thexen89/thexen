@@ -250,7 +250,7 @@ export default function HexGrid({ products, onProductClick, onReorder, backgroun
                   {/* 이미지 */}
                   <div className="absolute inset-0 rounded-full overflow-hidden">
                     <Image
-                      src={product.images[product.thumbnailIndex] || product.images[0]}
+                      src={product.images?.[product.thumbnailIndex] || product.images?.[0] || '/placeholder.svg'}
                       alt={product.name}
                       fill
                       className="object-cover"

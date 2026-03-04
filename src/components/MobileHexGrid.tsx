@@ -360,7 +360,7 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
       if (!imagesRef.current.has(product.id)) {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
-        img.src = product.images[product.thumbnailIndex] || product.images[0];
+        img.src = product.images?.[product.thumbnailIndex] || product.images?.[0] || '';
         img.onload = () => {
           imagesRef.current.set(product.id, img);
           requestRender();

@@ -11,7 +11,9 @@ interface ModalProps {
 }
 
 // 유튜브/비메오 URL 감지
-const getVideoEmbed = (url: string): { type: 'youtube' | 'vimeo'; id: string } | null => {
+const getVideoEmbed = (url: string | undefined): { type: 'youtube' | 'vimeo'; id: string } | null => {
+  if (!url) return null;
+
   // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return { type: 'youtube', id: ytMatch[1] };
@@ -186,11 +188,22 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   if (!product) return null;
 
   // 이미지 배열에 비디오 URL이 있으면 맨 뒤에 추가
+  const validImages = (product.images || []).filter(img => img && img.trim() !== '');
   const mediaItems = product.videoUrl
-    ? [...product.images, product.videoUrl]
-    : product.images;
+    ? [...validImages, product.videoUrl]
+    : validImages;
+
+  if (mediaItems.length === 0) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90" onClick={handleClose}>
+        <p className="text-white/50">이미지가 없습니다</p>
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(currentIndex, mediaItems.length - 1);
   const hasMultipleMedia = mediaItems.length > 1;
-  const currentMedia = mediaItems[currentIndex];
+  const currentMedia = mediaItems[safeIndex];
   const videoEmbed = getVideoEmbed(currentMedia);
 
   // 애니메이션 스타일 계산
