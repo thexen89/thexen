@@ -286,25 +286,19 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
         }
       });
 
-      // 사각형 마스크 - 상하 10%씩만 검게 (80% 가시 영역)
-      const maskHeight = h * 0.1;
-      ctx.fillStyle = '#000000';
-      // 상단 마스크
-      ctx.fillRect(0, 0, w, maskHeight);
-      // 하단 마스크
-      ctx.fillRect(0, h - maskHeight, w, maskHeight);
+      // 마스크 없음 - 전체 영역 표시
 
       // 리오더 모드 안내
       if (isReorder) {
         ctx.save();
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         const bannerH = 32;
-        ctx.fillRect(0, h - maskHeight - bannerH - 10, w, bannerH);
+        ctx.fillRect(0, h - bannerH - 10, w, bannerH);
         ctx.fillStyle = '#00d4ff';
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('순서 변경 모드 — 드래그하여 순서 변경', w / 2, h - maskHeight - bannerH / 2 - 10);
+        ctx.fillText('순서 변경 모드 — 드래그하여 순서 변경', w / 2, h - bannerH / 2 - 10);
         ctx.restore();
       }
     };
