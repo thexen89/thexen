@@ -572,6 +572,7 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
 
         const result = findItemAtPosition(touch.clientX, touch.clientY);
         if (result) {
+          e.preventDefault(); // 합성 click 이벤트 차단 (모달 즉시 닫힘 방지)
           onProductClick(result.item.product, result.position);
         }
       } else {
