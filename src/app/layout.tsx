@@ -9,6 +9,15 @@ export const metadata: Metadata = {
     "기업 GWP", "프로모션", "기업 마케팅", 
     "굿즈 제작", "브랜드 MD", "B2B PWP", "기프트 제작"
   ],
+  verification: {
+
+other: {
+
+"naver-site-verification": "naver-site-verification" content="2775301ac2269d9c3c92e70c444e865a98d2ee72",
+
+},
+
+},
   authors: [{ name: "주식회사 더젠 (THEXEN)" }],
   formatDetection: {
     email: false,
