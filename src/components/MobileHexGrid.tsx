@@ -37,7 +37,7 @@ const ROWS = 25; // 충분한 행 수 (스크롤용)
 const FRICTION = 0.92;
 const MIN_VELOCITY = 0.5;
 const X_SPRING_BACK = 0.85; // X축 스프링백 계수
-const LONG_PRESS_MS = 500; // 롱프레스 시간
+const LONG_PRESS_MS = 250; // 롱프레스 시간
 
 export default function MobileHexGrid({ products, onProductClick, onReorder, backgroundColor = '#000000' }: MobileHexGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,7 +143,7 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
     const yDistance = Math.abs(y);
 
     const centerZone = 40;
-    const fadeZone = 250;
+    const fadeZone = 350;
 
     let size: number;
 
@@ -152,7 +152,7 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
     } else {
       const progress = Math.min((yDistance - centerZone) / fadeZone, 1);
       // 더 급격한 감소 곡선 (끝으로 갈수록 빠르게 작아짐)
-      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 0.5);
+      size = CONFIG.maxSize - (CONFIG.maxSize - CONFIG.minSize) * Math.pow(progress, 1.0);
     }
 
     const opacity = 1;
