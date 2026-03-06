@@ -361,7 +361,7 @@ export default function Home() {
             className="transition-colors hover:opacity-80 cursor-pointer"
           >
             {headerLogoImage ? (
-              <img src={headerLogoImage} alt="Logo" className="h-10 w-10 object-contain" />
+              <img src={headerLogoImage} alt="Logo" className="h-12 w-12 object-contain" />
             ) : (
               <span className="text-lg font-black text-white tracking-tighter">THEXEN</span>
             )}
@@ -370,11 +370,11 @@ export default function Home() {
             {externalLinks.filter(link => link.image).map((link, idx) =>
               link.url ? (
                 <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+                  className="w-7 h-7 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
                   <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
                 </a>
               ) : (
-                <div key={idx} className="w-10 h-10 rounded-lg overflow-hidden">
+                <div key={idx} className="w-7 h-7 rounded-lg overflow-hidden">
                   <img src={link.image} alt={`Link ${idx + 1}`} className="w-full h-full object-cover" />
                 </div>
               )

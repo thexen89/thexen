@@ -97,11 +97,10 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
       }
     }
 
-    // 중앙에서 가까운 순으로 정렬
+    // 위→아래, 왼→오 순서 정렬 (PC 버전과 동일)
     positions.sort((a, b) => {
-      const distA = Math.sqrt(a.baseX ** 2 + a.baseY ** 2);
-      const distB = Math.sqrt(b.baseX ** 2 + b.baseY ** 2);
-      return distA - distB;
+      if (a.baseY !== b.baseY) return a.baseY - b.baseY;
+      return a.baseX - b.baseX;
     });
 
     // 제품 할당
