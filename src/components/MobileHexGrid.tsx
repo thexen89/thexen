@@ -128,10 +128,21 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
     };
   }, [gridItems]);
 
-  // contentBounds를 ref에 동기화
+  // contentBounds를 ref에 동기화 + 초기 오프셋 설정
+  const initializedRef = useRef(false);
   useEffect(() => {
     contentBoundsRef.current = contentBounds;
-  }, [contentBounds]);
+
+    // 최초 1회: 제품 중앙이 화면 중앙에 오도록 오프셋 설정
+    if (!initializedRef.current && gridItems.length > 0) {
+      initializedRef.current = true;
+      const ys = gridItems.map(item => item.baseY);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const centerOfContent = (minY + maxY) / 2;
+      offsetRef.current.y = -centerOfContent;
+    }
+  }, [contentBounds, gridItems]);
 
   // 버블 변환 계산 - Y축 거리 기준 크기 변동, 간격은 고정
   const calculateBubbleTransform = useCallback((baseX: number, baseY: number, offsetX: number, offsetY: number, centerX: number, centerY: number, screenHeight: number) => {
