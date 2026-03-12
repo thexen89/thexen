@@ -6,7 +6,9 @@ export async function GET() {
     const products = await prisma.product.findMany({
       orderBy: { priority: 'asc' },
     });
-    return NextResponse.json({ products });
+    const response = NextResponse.json({ products });
+    response.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     console.error('Error reading products:', error);
     return NextResponse.json({ products: [] }, { status: 500 });

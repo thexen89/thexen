@@ -23,7 +23,9 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json(settings);
+    const response = NextResponse.json(settings);
+    response.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     console.error('Failed to fetch settings:', error);
     return NextResponse.json(

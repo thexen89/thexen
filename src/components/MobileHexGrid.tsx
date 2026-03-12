@@ -357,6 +357,14 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
     animationRef.current = requestAnimationFrame(animateInertia);
   }, [requestRender]);
 
+  // Cloudinary URL에 리사이즈 변환 추가
+  const getOptimizedUrl = useCallback((url: string, size: number) => {
+    if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+      return url.replace('/upload/', `/upload/w_${size},h_${size},c_fill,q_auto,f_auto/`);
+    }
+    return url;
+  }, []);
+
   // 이미지 로드
   useEffect(() => {
     const size = CONFIG.maxSize * 2; // 고해상도용
@@ -364,7 +372,8 @@ export default function MobileHexGrid({ products, onProductClick, onReorder, bac
       if (!imagesRef.current.has(product.id)) {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
-        img.src = product.images?.[product.thumbnailIndex] || product.images?.[0] || '';
+        const rawUrl = product.images?.[product.thumbnailIndex] || product.images?.[0] || '';
+        img.src = getOptimizedUrl(rawUrl, size);
         img.onload = () => {
           imagesRef.current.set(product.id, img);
           requestRender();

@@ -82,17 +82,6 @@ export default function Home() {
       setRightPanelPositionX(settingsData.rightPanelPositionX ?? 50);
       setRightPanelPositionY(settingsData.rightPanelPositionY ?? 50);
       setIsLoading(false);
-
-      // 백그라운드에서 모든 제품 이미지 프리로드
-      const allProducts = productsData.products || [];
-      allProducts.forEach((p: Product) => {
-        (p.images || []).forEach((url: string) => {
-          if (url) {
-            const img = new window.Image();
-            img.src = url;
-          }
-        });
-      });
     }).catch((err) => {
       console.error('Failed to load data:', err);
       setIsLoading(false);
