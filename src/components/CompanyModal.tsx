@@ -309,7 +309,7 @@ export default function CompanyModal({ isOpen, onClose, onReturnToLanding, image
 
           {/* Description Overlay */}
           {description && (
-            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+            <div className="hidden md:block absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
               <h2 className="text-xl font-bold text-white mb-2">THEXEN</h2>
               <p className="text-white/70 text-sm whitespace-pre-line">
                 {description}
