@@ -51,6 +51,22 @@ export default function RootLayout({
           crossOrigin=""
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "http://schema.org",
+              "@type": "Organization",
+              "name": "주식회사 더젠",
+              "url": "https://www.thexen.co.kr",
+              "sameAs": [
+                "https://blog.naver.com/thexen",
+                "https://excited-trunk-ac1.notion.site/THEXEN-Project-Story-Archive-30fdc38d7eb680519ebfe95244cd489d"
+              ],
+            }),
+          }}
+        />
       </head>
       <body className="font-pretendard antialiased">{children}</body>
     </html>
