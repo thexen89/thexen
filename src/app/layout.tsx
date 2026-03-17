@@ -41,12 +41,12 @@ export default function RootLayout({
         <link
           rel="preload"
           as="style"
-          crossOrigin=""
+          crossOrigin="anonymous"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
         <link
           rel="stylesheet"
-          crossOrigin=""
+          crossOrigin="anonymous"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
 
