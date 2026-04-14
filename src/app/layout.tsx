@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+
+
+
 export const metadata: Metadata = {
   title: "주식회사 더젠 THEXEN 공식 홈페이지 | 기업 굿즈 제작",
   description: "기업 굿즈 제작 전문 더젠(THEXEN)은 대중의 열광을 이끌어내는 메가 히트작을 탄생시켜온 대한민국 대표 하이엔드 기업 굿즈 및 MD 상품 전문 에이전시입니다. 더젠은 판촉이 아닌 문화를 만드는 기업 굿즈 전문 파트너입니다.",
@@ -50,6 +53,20 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
         />
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -64,6 +81,7 @@ export default function RootLayout({
                 "주더젠", 
                 "주)더젠", 
                 "주) 더젠", 
+                "(주) 더젠", 
                 "(주)더젠"
               ],
               "url": "https://www.thexen.co.kr",
