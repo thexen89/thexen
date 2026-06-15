@@ -61,14 +61,14 @@ export default function HomeClient({ initialProducts, initialSettings }: { initi
   }, []);
 
   const handleLandingClick = useCallback(() => {
-    setViewState('collapsing');
+  setViewState('collapsing');
+  setTimeout(() => {
+    setViewState('expanding');
     setTimeout(() => {
-      setViewState('expanding');
-      setTimeout(() => {
-        setViewState('grid');
-      }, 600);
-    }, 400);
-  }, []);
+      setViewState('grid');
+    }, 1200); // 그리드가 완전히 커지는 시간 (0.6초 -> 1.2초)
+  }, 800); // 랜딩 페이지가 작아지며 사라지는 시간 (0.4초 -> 0.8초)
+}, []);
 
   const handleProductClick = useCallback((product: Product, position?: ClickPosition) => {
     setSelectedProduct(product);
@@ -144,11 +144,11 @@ export default function HomeClient({ initialProducts, initialSettings }: { initi
     <div className="w-screen h-screen relative bg-black">
       {/* 1. 랜딩 페이지 영역 (CSS로 숨김/보임 처리하여 코드는 서버가 무조건 굽게 만듭니다) */}
       <main
-        className={`h-screen w-screen overflow-hidden absolute inset-0 bg-black cursor-pointer z-50 transition-all duration-500 ${
-          isLandingVisible ? 'block' : 'hidden'
-        } ${viewState === 'collapsing' ? 'scale-50 opacity-0' : ''}`}
-        onClick={viewState === 'landing' ? handleLandingClick : undefined}
-      >
+  className={`h-screen w-screen overflow-hidden absolute inset-0 bg-black cursor-pointer z-50 transition-all duration-[800ms] ${
+    isLandingVisible ? 'block' : 'hidden'
+  } ${viewState === 'collapsing' ? 'scale-50 opacity-0' : ''}`}
+  onClick={viewState === 'landing' ? handleLandingClick : undefined}
+>
         {landingBackgroundImage && (
           <div
             className="absolute inset-0"
@@ -307,15 +307,14 @@ export default function HomeClient({ initialProducts, initialSettings }: { initi
       </main>
 
       <style jsx>{`
-        @keyframes expand-from-center {
-          0% { transform: scale(0); opacity: 0; }
-          50% { opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .animate-expand-from-center {
-          animation: expand-from-center 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-      `}</style>
+  @keyframes expand-from-center {
+    0% { transform: scale(0.3); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .animate-expand-from-center {
+    animation: expand-from-center 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  }
+`}</style>
     </div>
   );
 }
