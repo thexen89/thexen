@@ -267,13 +267,15 @@ export default function HomeClient({ initialProducts, initialSettings }: { initi
           </div>
         )}
 
-        <div className={`overflow-hidden ${isMobile ? 'flex-1' : 'w-full max-w-[1200px]'} ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}>
-          {isMobile ? (
-            <MobileHexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
-          ) : (
-            <HexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
-          )}
-        </div>
+        <div className={`overflow-hidden ${isMobile ? 'flex-1' : 'w-full max-w-[1200px]'} ${
+  (viewState === 'landing' || viewState === 'collapsing') ? 'opacity-0 scale-0' : ''
+} ${viewState === 'expanding' ? 'animate-expand-from-center' : ''}`}>
+  {isMobile ? (
+    <MobileHexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
+  ) : (
+    <HexGrid products={products} onProductClick={handleProductClick} backgroundColor={gridBackgroundColor} />
+  )}
+</div>
 
         {!isMobile && (
           <div className="flex-1 min-w-[60px] z-20 relative">
