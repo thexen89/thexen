@@ -60,7 +60,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     }, IDLE_TIMEOUT - 3000);
   }, []);
 
-  // 모달 닫기 핸들러 (600ms 동안 원래 자리로 빨려 들어가는 애니메이션 수행)
+  // 모달 닫기 핸들러
   const handleClose = useCallback(() => {
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
@@ -72,7 +72,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     setAnimationState('exiting');
     setTimeout(() => {
       onClose();
-    }, 600); // 600ms 트랜지션이 끝난 후 완전히 언마운트
+    }, 1000); // 💡 [속도 조절] 닫힐 때 대기 시간 (1000ms = 1초)
   }, [onClose]);
 
   const goToPrev = useCallback(() => {
@@ -139,12 +139,11 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   useEffect(() => {
     if (product) {
       setCurrentIndex(0);
-      setAnimationState('entering'); // 최초 작은 상태로 렌더링 시작
+      setAnimationState('entering');
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
 
-      // 💡 핵심 수정: 30ms의 미세한 딜레이 후 바로 visible로 전환하여 
-      // 애니메이션이 딜레이 없이 600ms 동안 스르륵 켜지도록 만듭니다.
+      // 30ms의 미세한 딜레이 후 바로 애니메이션 동작 시작
       const timer = setTimeout(() => {
         setAnimationState('visible');
       }, 30);
@@ -196,11 +195,9 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   const currentMedia = mediaItems[safeIndex];
   const videoEmbed = getVideoEmbed(currentMedia);
 
-  // 애니메이션 스타일 계산
   const getAnimationStyle = () => {
     if (!originPosition) return {};
 
-    // 진입 중이거나 닫히는 중일 때는 클릭했던 헥사곤 좌표에서 작고 둥글게 숨김
     if (animationState === 'entering' || animationState === 'exiting') {
       return {
         transform: `translate(${originPosition.x - window.innerWidth / 2}px, ${originPosition.y - window.innerHeight / 2}px) scale(0.05)`,
@@ -209,7 +206,6 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
       };
     }
 
-    // 완전히 보일 때는 중앙에 100% 크기로 안착
     return {
       transform: 'translate(0, 0) scale(1)',
       opacity: 1,
@@ -219,22 +215,22 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   return (
     <div
-      className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+      className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[1000ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
         animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
       }`}
       onClick={handleClose}
     >
-      {/* Backdrop - 반투명 어두운 배경 */}
+      {/* Backdrop - 💡 [속도 조절] duration-[1000ms] 로 변경 */}
       <div
-        className={`absolute inset-0 bg-black/90 transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+        className={`absolute inset-0 bg-black/90 transition-opacity duration-[1000ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
           animationState === 'entering' || animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
         }`}
       />
 
-      {/* Modal 본체 - 이미지만 표시 (고급 감속 큐빅 베지에 곡선 이식) */}
+      {/* Modal 본체 - 💡 [속도 조절] duration-[1000ms] 로 변경 */}
       <div
         ref={modalRef}
-        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
+        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[1000ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
@@ -243,13 +239,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           onClick={handleClose}
           className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
