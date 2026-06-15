@@ -76,7 +76,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     setAnimationState('exiting');
     setTimeout(() => {
       onClose();
-    }, 300);
+    }, 700);
   }, [onClose]);
 
   const goToPrev = useCallback(() => {
@@ -153,7 +153,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
       // 진입 애니메이션 완료
       const timer = setTimeout(() => {
         setAnimationState('visible');
-      }, 300);
+      }, 700);
 
       // idle 타이머 시작
       resetIdleTimer();
@@ -237,26 +237,26 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   };
 
   return (
+  <div
+    className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+      animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
+    }`}
+    onClick={handleClose}
+  >
+    {/* Backdrop - 반투명 어두운 배경 */}
     <div
-      className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-300 ${
-        animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
+      className={`absolute inset-0 bg-black/90 transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+        animationState === 'entering' ? 'opacity-0' : animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
       }`}
-      onClick={handleClose}
-    >
-      {/* Backdrop - 반투명 어두운 배경 */}
-      <div
-        className={`absolute inset-0 bg-black/90 transition-opacity duration-300 ${
-          animationState === 'entering' ? 'opacity-0' : animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
-        }`}
-      />
+    />
 
       {/* Modal - 이미지만 표시 (배경/테두리 없음) */}
-      <div
-        ref={modalRef}
-        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-300 ease-out"
-        style={getAnimationStyle()}
-        onClick={(e) => e.stopPropagation()}
-      >
+<div
+  ref={modalRef}
+  className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
+  style={getAnimationStyle()}
+  onClick={(e) => e.stopPropagation()}
+>
         {/* Close button (X) */}
         <button
           onClick={handleClose}
