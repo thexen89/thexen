@@ -38,10 +38,8 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   // idle 타이머 초기화
   const resetIdleTimer = useCallback(() => {
-    // 카운트다운 숨기기
     setIdleCountdown(null);
 
-    // 기존 타이머 제거
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
     }
@@ -49,9 +47,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
       clearInterval(countdownIntervalRef.current);
     }
 
-    // 새 타이머 시작 (7초 후 카운트다운 시작, 10초 후 닫기)
     idleTimerRef.current = setTimeout(() => {
-      // 3초 카운트다운 시작
       setIdleCountdown(3);
       countdownIntervalRef.current = setInterval(() => {
         setIdleCountdown((prev) => {
@@ -61,11 +57,11 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           return prev - 1;
         });
       }, 1000);
-    }, IDLE_TIMEOUT - 3000); // 7초 후 카운트다운 시작
+    }, IDLE_TIMEOUT - 3000);
   }, []);
 
+  // 모달 닫기 핸들러 (600ms 동안 원래 자리로 빨려 들어가는 애니메이션 수행)
   const handleClose = useCallback(() => {
-    // 타이머 정리
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
     }
@@ -76,7 +72,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     setAnimationState('exiting');
     setTimeout(() => {
       onClose();
-    }, 700);
+    }, 600); // 600ms 트랜지션이 끝난 후 완전히 언마운트
   }, [onClose]);
 
   const goToPrev = useCallback(() => {
@@ -109,7 +105,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
-      resetIdleTimer(); // 키보드 입력 시 타이머 리셋
+      resetIdleTimer();
       if (e.key === 'Escape') {
         handleClose();
       } else if (e.key === 'ArrowLeft') {
@@ -121,18 +117,15 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     [handleClose, goToPrev, goToNext, resetIdleTimer]
   );
 
-  // 카운트다운이 0이 되면 메인페이지로 이동
   useEffect(() => {
     if (idleCountdown === 1) {
       const closeTimer = setTimeout(() => {
-        // 타이머 정리
         if (idleTimerRef.current) {
           clearTimeout(idleTimerRef.current);
         }
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current);
         }
-        // 랜딩 페이지로 이동 (있으면), 없으면 단순히 닫기
         if (onReturnToLanding) {
           onReturnToLanding();
         } else {
@@ -146,19 +139,18 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   useEffect(() => {
     if (product) {
       setCurrentIndex(0);
-      setAnimationState('entering');
+      setAnimationState('entering'); // 최초 작은 상태로 렌더링 시작
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
 
-      // 진입 애니메이션 완료
+      // 💡 핵심 수정: 30ms의 미세한 딜레이 후 바로 visible로 전환하여 
+      // 애니메이션이 딜레이 없이 600ms 동안 스르륵 켜지도록 만듭니다.
       const timer = setTimeout(() => {
         setAnimationState('visible');
-      }, 700);
+      }, 30);
 
-      // idle 타이머 시작
       resetIdleTimer();
 
-      // 마우스 움직임 감지
       const handleActivity = () => {
         resetIdleTimer();
       };
@@ -174,7 +166,6 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
         document.removeEventListener('scroll', handleActivity);
         document.body.style.overflow = '';
 
-        // 타이머 정리
         if (idleTimerRef.current) {
           clearTimeout(idleTimerRef.current);
         }
@@ -187,7 +178,6 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   if (!product) return null;
 
-  // 이미지 배열에 비디오 URL이 있으면 맨 뒤에 추가
   const validImages = (product.images || []).filter(img => img && img.trim() !== '');
   const mediaItems = product.videoUrl
     ? [...validImages, product.videoUrl]
@@ -208,27 +198,18 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
   // 애니메이션 스타일 계산
   const getAnimationStyle = () => {
-    if (!originPosition) {
-      // originPosition이 없으면 기본 애니메이션
-      return {};
-    }
+    if (!originPosition) return {};
 
-    if (animationState === 'entering') {
+    // 진입 중이거나 닫히는 중일 때는 클릭했던 헥사곤 좌표에서 작고 둥글게 숨김
+    if (animationState === 'entering' || animationState === 'exiting') {
       return {
-        transform: `translate(${originPosition.x - window.innerWidth / 2}px, ${originPosition.y - window.innerHeight / 2}px) scale(0.1)`,
+        transform: `translate(${originPosition.x - window.innerWidth / 2}px, ${originPosition.y - window.innerHeight / 2}px) scale(0.05)`,
         opacity: 0,
         borderRadius: '50%',
       };
     }
 
-    if (animationState === 'exiting') {
-      return {
-        transform: `translate(${originPosition.x - window.innerWidth / 2}px, ${originPosition.y - window.innerHeight / 2}px) scale(0.1)`,
-        opacity: 0,
-        borderRadius: '50%',
-      };
-    }
-
+    // 완전히 보일 때는 중앙에 100% 크기로 안착
     return {
       transform: 'translate(0, 0) scale(1)',
       opacity: 1,
@@ -237,26 +218,26 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   };
 
   return (
-  <div
-    className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
-      animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
-    }`}
-    onClick={handleClose}
-  >
-    {/* Backdrop - 반투명 어두운 배경 */}
     <div
-      className={`absolute inset-0 bg-black/90 transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
-        animationState === 'entering' ? 'opacity-0' : animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
+      className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+        animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
       }`}
-    />
+      onClick={handleClose}
+    >
+      {/* Backdrop - 반투명 어두운 배경 */}
+      <div
+        className={`absolute inset-0 bg-black/90 transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+          animationState === 'entering' || animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
+        }`}
+      />
 
-      {/* Modal - 이미지만 표시 (배경/테두리 없음) */}
-<div
-  ref={modalRef}
-  className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
-  style={getAnimationStyle()}
-  onClick={(e) => e.stopPropagation()}
->
+      {/* Modal 본체 - 이미지만 표시 (고급 감속 큐빅 베지에 곡선 이식) */}
+      <div
+        ref={modalRef}
+        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[600ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
+        style={getAnimationStyle()}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close button (X) */}
         <button
           onClick={handleClose}
@@ -269,18 +250,12 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
         {/* Image/Video with Navigation */}
         <div className="relative flex items-center justify-center" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-          {/* Navigation Arrows - 바깥쪽에 배치 */}
           {hasMultipleMedia && (
             <button
               onClick={goToPrev}
@@ -350,17 +325,13 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
             </div>
           )}
 
-          {/* Info Overlay - showInfo가 true일 때만 표시 */}
+          {/* Info Overlay */}
           {product.showInfo && (
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-              <h2 className="text-xl font-bold text-white mb-1">
-                {product.name}
-              </h2>
+              <h2 className="text-xl font-bold text-white mb-1">{product.name}</h2>
               <p className="text-white/70 text-sm">{product.client}</p>
               {product.description && (
-                <p className="text-white/50 text-sm mt-2 whitespace-pre-line">
-                  {product.description}
-                </p>
+                <p className="text-white/50 text-sm mt-2 whitespace-pre-line">{product.description}</p>
               )}
             </div>
           )}
