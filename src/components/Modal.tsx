@@ -245,7 +245,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
         </button>
 
         {/* Image/Video with Navigation */}
-        <div className="relative flex items-center justify-center" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+<div className="relative flex items-center justify-center min-w-[300px] min-h-[200px]" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {hasMultipleMedia && (
             <button
               onClick={goToPrev}
