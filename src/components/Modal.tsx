@@ -31,6 +31,10 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   const [currentIndex, setCurrentIndex] = useState(0);
   const [animationState, setAnimationState] = useState<'entering' | 'visible' | 'exiting'>('entering');
   const [idleCountdown, setIdleCountdown] = useState<number | null>(null);
+  
+  // 💡 [추가] 모바일에서 정보창이 열려있는지 확인하는 상태
+  const [showMobileInfo, setShowMobileInfo] = useState(false); 
+  
   const modalRef = useRef<HTMLDivElement>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -72,7 +76,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     setAnimationState('exiting');
     setTimeout(() => {
       onClose();
-    }, 1000); // 💡 [속도 조절] 닫힐 때 대기 시간 (1000ms = 1초)
+    }, 1000); // 닫힐 때 대기 시간 (1000ms = 1초)
   }, [onClose]);
 
   const goToPrev = useCallback(() => {
@@ -139,6 +143,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
   useEffect(() => {
     if (product) {
       setCurrentIndex(0);
+      setShowMobileInfo(false); // 💡 다른 상품을 누르면 모바일 정보창 상태 초기화
       setAnimationState('entering');
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
@@ -230,14 +235,14 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
       {/* Modal 본체 */}
       <div
         ref={modalRef}
-        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[1000ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[1000ms] ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden"
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button (X) */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
+          className="absolute top-4 right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -245,11 +250,11 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
         </button>
 
         {/* Image/Video with Navigation */}
-<div className="relative flex items-center justify-center min-w-[300px] min-h-[200px]" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <div className="relative flex items-center justify-center min-w-[300px] min-h-[200px]" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {hasMultipleMedia && (
             <button
               onClick={goToPrev}
-              className="absolute left-2 md:-left-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
+              className="absolute left-2 md:-left-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-20"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -292,7 +297,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           {hasMultipleMedia && (
             <button
               onClick={goToNext}
-              className="absolute right-2 md:-right-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-10"
+              className="absolute right-2 md:-right-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-20"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -302,7 +307,7 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
 
           {/* Dots Indicator */}
           {hasMultipleMedia && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {mediaItems.map((_, idx) => (
                 <button
                   key={idx}
@@ -315,15 +320,39 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
             </div>
           )}
 
-          {/* Info Overlay */}
+          {/* 💡 [추가] 모바일 전용 정보 토글 & 데스크톱 오버레이 영역 */}
           {product.showInfo && (
-            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-              <h2 className="text-xl font-bold text-white mb-1">{product.name}</h2>
-              <p className="text-white/70 text-sm">{product.client}</p>
-              {product.description && (
-                <p className="text-white/50 text-sm mt-2 whitespace-pre-line">{product.description}</p>
-              )}
-            </div>
+            <>
+              {/* 모바일 정보 보기 [i] 버튼 (태블릿/PC에서는 숨김) */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMobileInfo((prev) => !prev);
+                }}
+                className={`md:hidden absolute bottom-4 right-4 z-30 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${
+                  showMobileInfo ? 'bg-white text-black' : 'bg-black/60 hover:bg-white/20 text-white'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
+              </button>
+
+              {/* 정보 오버레이 (모바일: 버튼클릭 시 위로 스르륵 등장 / PC: 항상 표시) */}
+              <div
+                className={`absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${
+                  showMobileInfo 
+                    ? 'translate-y-0 opacity-100 pointer-events-auto' 
+                    : 'translate-y-4 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto'
+                }`}
+              >
+                <h2 className="text-xl font-bold text-white mb-1 pr-10">{product.name}</h2>
+                <p className="text-white/70 text-sm">{product.client}</p>
+                {product.description && (
+                  <p className="text-white/50 text-sm mt-2 whitespace-pre-line">{product.description}</p>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
