@@ -213,7 +213,6 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     };
   };
 
-  // TO-BE (변경) ✨ : 'opacity-0' 뒤에 'pointer-events-none' 추가!
   return (
     <div
       className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[1000ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
@@ -221,17 +220,17 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
       }`}
       onClick={handleClose}
     >
-      {/* Backdrop - 💡 [속도 조절] duration-[1000ms] 로 변경 */}
+      {/* Backdrop */}
       <div
-        className={`absolute inset-0 bg-black/90 transition-opacity duration-[1000ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
+        className={`absolute inset-0 bg-black/90 transition-opacity duration-[1000ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
           animationState === 'entering' || animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
         }`}
       />
 
-      {/* Modal 본체 - 💡 [속도 조절] duration-[1000ms] 로 변경 */}
+      {/* Modal 본체 */}
       <div
         ref={modalRef}
-        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[1000ms] ease-[cubic-bezier(0.25,1,0.5,1)]"
+        className="relative max-w-[90vw] max-h-[90vh] transition-all duration-[1000ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
