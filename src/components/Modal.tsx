@@ -213,10 +213,11 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
     };
   };
 
+  // TO-BE (변경) ✨ : 'opacity-0' 뒤에 'pointer-events-none' 추가!
   return (
     <div
-      className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[1000ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
-        animationState === 'exiting' ? 'opacity-0' : 'opacity-100'
+      className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-[1000ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        animationState === 'exiting' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       onClick={handleClose}
     >
