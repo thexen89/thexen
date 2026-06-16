@@ -239,23 +239,23 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
         style={getAnimationStyle()}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button (X) */}
-        <button
+        {/* Close  (X) */}
+        <
           onClick={handleClose}
           className="absolute top-4 right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </button>
+        </>
 
         {/* Image/Video with Navigation */}
         <div className="relative flex items-center justify-center min-w-[300px] min-h-[200px]" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {hasMultipleMedia && (
             <button
-              onClick={goToPrev}
-              className="absolute left-2 md:-left-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-20"
-            >
+  onClick={goToPrev}
+  className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-20"
+>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -296,9 +296,9 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
           {/* Navigation Arrow - Right */}
           {hasMultipleMedia && (
             <button
-              onClick={goToNext}
-              className="absolute right-2 md:-right-16 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-20"
-            >
+  onClick={goToNext}
+  className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors z-20"
+>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
