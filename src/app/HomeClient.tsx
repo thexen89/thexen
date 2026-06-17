@@ -301,15 +301,20 @@ export default function HomeClient({ initialProducts, initialSettings }: { initi
           </Suspense>
         </ErrorBoundary>
 
-        
-  @keyframes expand-from-center {
-    0% { transform: scale(0.3); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  .animate-expand-from-center {
-    animation: expand-from-center 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  }
-`}</style>
+        <Suspense fallback={null}>
+          <CompanyModal isOpen={showCompanyModal} onClose={() => setShowCompanyModal(false)} onReturnToLanding={handleReturnToLanding} images={companyImages} description={companyDescription} />
+        </Suspense>
+      </main>
+
+      <style jsx>{`
+        @keyframes expand-from-center {
+          0% { transform: scale(0.3); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-expand-from-center {
+          animation: expand-from-center 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+      `}</style>
     </div>
   );
 }
