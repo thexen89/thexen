@@ -304,6 +304,20 @@ export default function HomeClient({ initialProducts, initialSettings }: { initi
         <Suspense fallback={null}>
           <CompanyModal isOpen={showCompanyModal} onClose={() => setShowCompanyModal(false)} onReturnToLanding={handleReturnToLanding} images={companyImages} description={companyDescription} />
         </Suspense>
+
+        {/* 💡 [SEO 추가] 구글 로봇(크롤러) 전용 텍스트 블록 (화면에는 안 보임) */}
+        <div className="sr-only">
+          <h2>더젠(THEXEN) 프리미엄 굿즈 제작 주요 포트폴리오</h2>
+          <ul>
+            {products.map((product) => (
+              <li key={product.id}>
+                <h3>{product.name}</h3>
+                <p><strong>클라이언트:</strong> {product.client}</p>
+                {product.description && <p><strong>상세 설명:</strong> {product.description}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
       </main>
 
       <style jsx>{`
