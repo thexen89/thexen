@@ -262,35 +262,57 @@ export default function Modal({ product, onClose, onReturnToLanding, originPosit
             </button>
           )}
 
+
+
+
+
+
           {/* Media Content */}
-          <div className="relative">
-            {videoEmbed ? (
-              <iframe
-                src={
-                  videoEmbed.type === 'youtube'
-                    ? `https://www.youtube.com/embed/${videoEmbed.id}?autoplay=1`
-                    : `https://player.vimeo.com/video/${videoEmbed.id}?autoplay=1`
-                }
-                className="w-[80vw] max-w-[960px] aspect-video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <img
-                src={currentMedia}
-                alt={product.imageAlts?.[currentIndex] || `${product.name} - ${currentIndex + 1}`}
-                className="max-w-[80vw] max-h-[85vh] object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = `data:image/svg+xml,${encodeURIComponent(`
-                    <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
-                      <rect fill="#111" width="400" height="300"/>
-                      <text fill="#444" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="150">${product.name}</text>
-                    </svg>
-                  `)}`;
-                }}
-              />
-            )}
+          <div className="relative flex items-center justify-center">
+            {mediaItems.map((media, idx) => {
+              const isVideo = getVideoEmbed(media);
+              const isActive = idx === currentIndex;
+
+              return (
+                <div
+                  key={idx}
+                  className={`transition-opacity duration-500 ease-in-out ${
+                    isActive ? 'opacity-100 relative z-10' : 'opacity-0 absolute z-0 pointer-events-none'
+                  }`}
+                >
+                  {isVideo ? (
+                    // 비디오는 뒤에서 소리가 겹쳐서 재생되지 않도록, 활성화되었을 때만 렌더링합니다.
+                    isActive && (
+                      <iframe
+                        src={
+                          isVideo.type === 'youtube'
+                            ? `https://www.youtube.com/embed/${isVideo.id}?autoplay=1`
+                            : `https://player.vimeo.com/video/${isVideo.id}?autoplay=1`
+                        }
+                        className="w-[80vw] max-w-[960px] aspect-video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    )
+                  ) : (
+                    <img
+                      src={media}
+                      alt={product.imageAlts?.[idx] || `${product.name} - ${idx + 1}`}
+                      className="max-w-[80vw] max-h-[85vh] object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `data:image/svg+xml,${encodeURIComponent(`
+                          <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+                            <rect fill="#111" width="400" height="300"/>
+                            <text fill="#444" font-family="sans-serif" font-size="20" text-anchor="middle" x="200" y="150">${product.name}</text>
+                          </svg>
+                        `)}`;
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Navigation Arrow - Right */}
