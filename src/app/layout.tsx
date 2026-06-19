@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-// 💡 [추가 1] 구글 태그 매니저용 Script 기능 불러오기
+// 💡 [추가 1] 구글 태그 매니저 & 애널리틱스용 Script 기능 불러오기
 import Script from "next/script";
 
 export const metadata: Metadata = {
@@ -40,7 +40,18 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* 💡 [추가 2] 구글 태그 매니저 (Head) */}
+        {/* 💡 [추가 2-1] 구글 애널리틱스 (GA4) 직접 설치 */}
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-WYB8CRV4B9" strategy="afterInteractive" />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){window.dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-WYB8CRV4B9');
+          `}
+        </Script>
+
+        {/* 💡 [유지] 구글 태그 매니저 (Head) */}
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -136,7 +147,7 @@ export default function RootLayout({
       </head>
       
       <body className="font-pretendard antialiased">
-        {/* 💡 [추가 3] 구글 태그 매니저 (Body) */}
+        {/* 💡 [유지] 구글 태그 매니저 (Body) */}
         <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-M9CJFJ37"
