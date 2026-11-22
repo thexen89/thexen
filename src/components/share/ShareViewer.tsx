@@ -8,7 +8,14 @@ type MV = HTMLElement & {
   src: string;
   cameraOrbit: string;
   jumpCameraToGoal: () => void;
+  availableAnimations?: string[];
+  animationName?: string;
+  currentTime?: number;
+  play?: (opts?: { repetitions?: number }) => void;
 };
+
+// GLB 안에 'open'과 'close' 애니메이션이 있으면 열기/닫기 버튼을 보여 준다. 기본 상태는 닫힘.
+type AnimState = 'none' | 'closed' | 'open' | 'opening' | 'closing';
 
 export default function ShareViewer({ data }: { data: ViewerData }) {
   const { items } = data;
@@ -16,6 +23,7 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
   const [progress, setProgress] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [anim, setAnim] = useState<AnimState>('none');
   const mvRef = useRef<MV | null>(null);
   const item = items.find(i => i.id === current) || null;
 
@@ -48,6 +56,11 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
     el.addEventListener('load', () => {
       setLoaded(true);
       el.jumpCameraToGoal?.();
+      const list = el.availableAnimations || [];
+      setAnim(list.includes('open') && list.includes('close') ? 'closed' : 'none');
+    });
+    el.addEventListener('finished', () => {
+      setAnim(prev => (prev === 'opening' ? 'open' : prev === 'closing' ? 'closed' : prev));
     });
     el.addEventListener('error', () => setFailed(true));
   }, []);
@@ -58,11 +71,22 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
       setLoaded(false);
       setFailed(false);
       setProgress(0);
+      setAnim('none');
       return id;
     });
   }, []);
 
   const close = useCallback(() => setCurrent(null), []);
+
+  const toggleAnim = useCallback(() => {
+    const el = mvRef.current;
+    if (!el?.play || (anim !== 'closed' && anim !== 'open')) return;
+    const name = anim === 'closed' ? 'open' : 'close';
+    el.animationName = name;
+    el.currentTime = 0;
+    el.play({ repetitions: 1 });
+    setAnim(anim === 'closed' ? 'opening' : 'closing');
+  }, [anim]);
 
   useEffect(() => {
     if (!current) return;
@@ -217,6 +241,11 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
               <div className={s.err}>
                 3D 데이터를 열지 못했습니다.<br />페이지를 새로고침하시거나 더젠 담당자에게 알려 주세요.
               </div>
+            )}
+            {loaded && anim !== 'none' && (
+              <button className={s.animBtn} onClick={toggleAnim} disabled={anim === 'opening' || anim === 'closing'}>
+                {anim === 'closed' ? '열어 보기' : anim === 'open' ? '닫기' : anim === 'opening' ? '여는 중…' : '닫는 중…'}
+              </button>
             )}
             <div className={s.help}>드래그: 회전 · 스크롤/핀치: 확대 · 두 손가락/우클릭: 이동</div>
             <div className={s.wm}>THEXEN · 검토용</div>
