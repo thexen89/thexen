@@ -43,3 +43,22 @@ model SiteSettings {
   rightPanelPositionY Int  @default(50)  // 우측 패널 세로 위치
   updatedAt       DateTime @updatedAt
 }
+
+// 거래처 3D 컨펌 공유 (thexen.co.kr/v/[token])
+model Share {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  title        String
+  client       String?   // 받는 곳 (내부 메모용)
+  note         String?   // 페이지 상단 안내 문구
+  coverPath    String?   // Supabase Storage 'shares' 버킷 경로
+  coverWidth   Int?
+  coverHeight  Int?
+  items        Json      @default("[]") // [{id,name,glbPath,posterPath?,x,y,w,h}] 좌표는 % 단위
+  expiresAt    DateTime?
+  revoked      Boolean   @default(false)
+  viewCount    Int       @default(0)
+  lastViewedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}

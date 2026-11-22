@@ -453,6 +453,15 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
+            {/* 거래처 3D 공유 */}
+            <a
+              href="/admin/shares"
+              className="px-3 py-2 rounded-lg transition-colors text-xs md:text-sm bg-white/5 text-white/50 hover:text-white hover:bg-white/10"
+            >
+              <span className="hidden md:inline">거래처 공유</span>
+              <span className="md:hidden">공유</span>
+            </a>
+
             {/* 랜딩페이지 설정 버튼 */}
             <button
               onClick={() => setIsLandingSettingsOpen(true)}

@@ -15,7 +15,16 @@ AUTH_SECRET=64자이상의랜덤hex문자열
 CLOUDINARY_CLOUD_NAME=클라우드이름
 CLOUDINARY_API_KEY=API키
 CLOUDINARY_API_SECRET=API시크릿
+
+# 거래처 3D 공유 (/v/[token], /admin/shares) — 서버 전용, NEXT_PUBLIC_ 붙이지 말 것
+SUPABASE_URL=https://qrwnnstjxknwwptxqcyf.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=Supabase 대시보드 > Project Settings > API Keys 의 service_role(secret) 키
 ```
+
+- 거래처 공유 파일은 Supabase Storage 비공개 버킷 `shares`에 `{shareId}/파일` 형태로 저장된다.
+- 관리자 업로드는 `/api/shares/upload-url`에서 받은 1회용 URL로 브라우저가 Supabase에 직접 올린다(Vercel 요청 크기 제한 회피).
+- 거래처 페이지는 서버가 6시간짜리 서명 URL을 만들어 넘긴다. 만료·중지·삭제된 공유는 열리지 않는다.
+- `vercel.json`의 Cron이 매일 `/api/cron/keepalive`를 호출해 무료 플랜 일시 정지를 막는다.
 
 - `DATABASE_URL`: PgBouncer 경유 (런타임용)
 - `DIRECT_URL`: 직접 연결 (마이그레이션용)
