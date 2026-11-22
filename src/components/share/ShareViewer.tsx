@@ -25,6 +25,8 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
   const [failed, setFailed] = useState(false);
   const [anim, setAnim] = useState<AnimState>('none');
   const mvRef = useRef<MV | null>(null);
+  // 마지막으로 다 불러온 GLB 주소. 같은 제품을 다시 열면 다시 불러오지 않고 그대로 보여 준다.
+  const loadedUrl = useRef<string | null>(null);
   const item = items.find(i => i.id === current) || null;
 
   // model-viewer는 브라우저 전용 웹 컴포넌트라 클라이언트에서만 불러온다.
@@ -54,6 +56,7 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
       setProgress(Math.round(p * 100));
     });
     el.addEventListener('load', () => {
+      loadedUrl.current = el.src;
       setLoaded(true);
       el.jumpCameraToGoal?.();
       const list = el.availableAnimations || [];
@@ -66,15 +69,17 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
   }, []);
 
   const show = useCallback((id: string) => {
-    setCurrent(prev => {
-      if (prev === id) return prev;
+    const it = items.find(i => i.id === id);
+    if (!it || id === current) return;
+    // 이미 불러온 모델을 다시 여는 경우: 로딩 상태와 열기/닫기 상태를 그대로 유지
+    if (loadedUrl.current !== it.glbUrl) {
       setLoaded(false);
       setFailed(false);
       setProgress(0);
       setAnim('none');
-      return id;
-    });
-  }, []);
+    }
+    setCurrent(id);
+  }, [items, current]);
 
   const close = useCallback(() => setCurrent(null), []);
 
@@ -108,9 +113,13 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
 
   useEffect(() => {
     const el = mvRef.current;
-    if (el && item) {
-      el.cameraOrbit = '0deg 80deg auto';
+    if (!el || !item) return;
+    el.cameraOrbit = '0deg 80deg auto';
+    if (el.src !== item.glbUrl) {
       el.src = item.glbUrl;
+    } else {
+      // 같은 모델: 다시 불러오지 않고 시점만 정면으로
+      el.jumpCameraToGoal?.();
     }
   }, [item]);
 
