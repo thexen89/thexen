@@ -302,7 +302,7 @@ function Editor({
     if (file.size > 50 * 1024 * 1024) return flash('50MB를 넘는 파일은 올릴 수 없습니다. 경량화한 GLB를 올려 주세요.');
     if (file.size > 25 * 1024 * 1024 && !window.confirm(`${(file.size / 1048576).toFixed(0)}MB 파일입니다. 거래처 화면에서 열리는 데 오래 걸릴 수 있습니다. 그래도 올릴까요?`)) return;
     const id = rid();
-    const name = file.name.replace(/\.glb$/i, '').replace(/[_-]?(흉상|bust)$/i, '');
+    const name = file.name.replace(/\.glb$/i, '').replace(/[_\s-]*(흉상|웹용|bust|web)/gi, '').trim() || file.name;
     try {
       setBusy(b => ({ ...b, [id]: 0 }));
       const glbPath = await uploadFile(share.id, file, p => setBusy(b => ({ ...b, [id]: p })));
