@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { newShareToken, removeShareFolder } from '@/lib/shareStorage';
-import type { ShareItem } from '@/lib/shareTypes';
+import type { Hotspot, ShareImage, ShareItem } from '@/lib/shareTypes';
 
 // PATCH/DELETE는 미들웨어에서 관리자 세션을 확인한다.
 
@@ -44,6 +44,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       });
     }
     data.items = items;
+  }
+
+  if (Array.isArray(body.images)) {
+    const images: ShareImage[] = [];
+    for (const raw of body.images) {
+      const path = ownPath(raw?.path);
+      if (!path) continue;
+      const hotspots: Hotspot[] = [];
+      for (const h of Array.isArray(raw.hotspots) ? raw.hotspots : []) {
+        const x = pct(h?.x), y = pct(h?.y), w = pct(h?.w), hh = pct(h?.h);
+        if (!h?.itemId || x === null || y === null || !w || !hh) continue;
+        hotspots.push({ itemId: String(h.itemId), x, y, w, h: hh });
+      }
+      images.push({
+        id: String(raw.id || Math.random().toString(36).slice(2, 10)),
+        path,
+        width: Number(raw.width) || null,
+        height: Number(raw.height) || null,
+        caption: raw.caption ? String(raw.caption).normalize('NFC').trim() || null : null,
+        hotspots,
+      });
+    }
+    data.images = images;
+    // 예전 방식 필드는 첫 장과 맞춰 둔다
+    data.coverPath = images[0]?.path || null;
+    data.coverWidth = images[0]?.width || null;
+    data.coverHeight = images[0]?.height || null;
   }
 
   const updated = await prisma.share.update({ where: { id }, data });

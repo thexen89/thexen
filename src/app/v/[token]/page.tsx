@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { signPaths } from '@/lib/shareStorage';
-import type { ShareItem, ViewerData } from '@/lib/shareTypes';
+import { imagesOf, type ShareItem, type ViewerData } from '@/lib/shareTypes';
 import ShareViewer from '@/components/share/ShareViewer';
 
 export const dynamic = 'force-dynamic';
@@ -39,8 +39,9 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   }
 
   const items = (share.items as unknown as ShareItem[]) || [];
+  const images = imagesOf(share);
   const urls = await signPaths(
-    [share.coverPath || '', ...items.flatMap(i => [i.glbPath, i.posterPath || ''])],
+    [...images.map(im => im.path), ...items.flatMap(i => [i.glbPath, i.posterPath || ''])],
     URL_TTL,
   );
 
@@ -52,9 +53,16 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const data: ViewerData = {
     title: share.title,
     note: share.note,
-    coverUrl: share.coverPath ? urls[share.coverPath] || null : null,
-    coverWidth: share.coverWidth,
-    coverHeight: share.coverHeight,
+    images: images
+      .filter(im => urls[im.path])
+      .map(im => ({
+        id: im.id,
+        url: urls[im.path],
+        width: im.width,
+        height: im.height,
+        caption: im.caption || null,
+        hotspots: (im.hotspots || []).filter(h => items.some(i => i.id === h.itemId && urls[i.glbPath])),
+      })),
     expiresAt: share.expiresAt ? share.expiresAt.toISOString() : null,
     items: items
       .filter(i => urls[i.glbPath])

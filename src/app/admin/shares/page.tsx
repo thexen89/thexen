@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ShareItem, ShareRecord } from '@/lib/shareTypes';
+import { imagesOf, type Hotspot, type ShareImage, type ShareItem, type ShareRecord } from '@/lib/shareTypes';
 
 type Status = 'live' | 'expired' | 'revoked';
 const statusOf = (s: ShareRecord): Status =>
@@ -64,6 +64,8 @@ export default function SharesAdminPage() {
   const [newClient, setNewClient] = useState('');
   const [newDays, setNewDays] = useState('14');
   const [toast, setToast] = useState('');
+  // 저장 후 편집 화면이 새로 그려져도 보고 있던 사진 순번은 유지
+  const [selImg, setSelImg] = useState(0);
 
   const flash = (msg: string) => {
     setToast(msg);
@@ -168,7 +170,7 @@ export default function SharesAdminPage() {
                 return (
                   <li key={s.id}>
                     <button
-                      onClick={() => setSelectedId(s.id)}
+                      onClick={() => { setSelectedId(s.id); setSelImg(0); }}
                       className={`w-full text-left rounded-xl border p-3 transition-colors ${
                         s.id === selectedId ? 'border-white/60 bg-white/10' : 'border-white/10 hover:bg-white/5'
                       }`}
@@ -200,6 +202,8 @@ export default function SharesAdminPage() {
               onChanged={load}
               onDeleted={() => { setSelectedId(null); load(); }}
               flash={flash}
+              sel={selImg}
+              setSel={setSelImg}
             />
           ) : (
             <div className="h-full grid place-items-center text-white/40 text-sm text-center leading-relaxed">
@@ -217,26 +221,29 @@ export default function SharesAdminPage() {
   );
 }
 
+type EditImage = ShareImage & { url?: string | null };
+
 function Editor({
-  share, urls, onChanged, onDeleted, flash,
+  share, urls, onChanged, onDeleted, flash, sel: selProp, setSel: setSelProp,
 }: {
   share: ShareRecord;
   urls: Record<string, string>;
   onChanged: () => Promise<void> | void;
   onDeleted: () => void;
   flash: (m: string) => void;
+  sel: number;
+  setSel: (n: number | ((k: number) => number)) => void;
 }) {
   const [title, setTitle] = useState(share.title);
   const [client, setClient] = useState(share.client || '');
   const [note, setNote] = useState(share.note || '');
   const [expires, setExpires] = useState(toDateInput(share.expiresAt));
   const [items, setItems] = useState<ShareItem[]>(share.items || []);
-  const [cover, setCover] = useState({
-    path: share.coverPath,
-    w: share.coverWidth,
-    h: share.coverHeight,
-    url: share.coverPath ? urls[share.coverPath] || null : null,
-  });
+  const [images, setImages] = useState<EditImage[]>(() =>
+    imagesOf(share).map(im => ({ ...im, hotspots: im.hotspots || [], url: urls[im.path] || null })),
+  );
+  const sel = Math.min(selProp, Math.max(0, images.length - 1));
+  const setSel = setSelProp;
   const [localPosters, setLocalPosters] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, number | string>>({});
   const [drawingId, setDrawingId] = useState<string | null>(null);
@@ -247,6 +254,7 @@ function Editor({
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const st = statusOf(share);
   const link = useMemo(() => linkOf(share.token), [share.token]);
+  const cur = images[sel] || null;
 
   const patch = async (body: Record<string, unknown>) => {
     const res = await fetch(`/api/shares/${share.id}`, {
@@ -258,15 +266,17 @@ function Editor({
     return res.json();
   };
 
-  const save = async (override?: { items?: ShareItem[]; cover?: typeof cover }) => {
+  const save = async (override?: { items?: ShareItem[]; images?: EditImage[] }) => {
     setSaving(true);
     try {
-      const c = override?.cover || cover;
+      const its = override?.items || items;
+      const ims = override?.images || images;
       await patch({
         title, client, note,
         expiresAt: expires ? new Date(`${expires}T23:59:59+09:00`).toISOString() : null,
-        coverPath: c.path, coverWidth: c.w, coverHeight: c.h,
-        items: override?.items || items,
+        // 클릭 위치는 사진별(images.hotspots)로만 관리한다
+        items: its.map(i => ({ ...i, x: null, y: null, w: null, h: null })),
+        images: ims.map(({ url: _u, ...im }) => ({ ...im, hotspots: im.hotspots.filter(h => its.some(i => i.id === h.itemId)) })),
       });
       setDirty(false);
       flash('저장했습니다.');
@@ -280,20 +290,56 @@ function Editor({
 
   const touch = () => setDirty(true);
 
-  const onCover = async (file?: File) => {
-    if (!file) return;
+  // 사진 여러 장 한 번에 올리기 (선택한 순서대로 뒤에 붙음)
+  const addImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const list = Array.from(files).sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
+    let next = [...images];
     try {
-      setBusy(b => ({ ...b, cover: 0 }));
-      const size = await imageSize(file);
-      const path = await uploadFile(share.id, file, p => setBusy(b => ({ ...b, cover: p })));
-      const next = { path, w: size.w, h: size.h, url: size.url };
-      setCover(next);
-      await save({ cover: next });
+      for (let k = 0; k < list.length; k++) {
+        const file = list[k];
+        setBusy(b => ({ ...b, images: `${k + 1}/${list.length}` }));
+        const size = await imageSize(file);
+        const path = await uploadFile(share.id, file);
+        next = [...next, { id: rid(), path, width: size.w, height: size.h, caption: null, hotspots: [], url: size.url }];
+        setImages(next);
+      }
+      await save({ images: next });
     } catch (e) {
       flash((e as Error).message);
+      if (next.length !== images.length) await save({ images: next });
     } finally {
-      setBusy(b => { const n = { ...b }; delete n.cover; return n; });
+      setBusy(b => { const n = { ...b }; delete n.images; return n; });
     }
+  };
+
+  const moveImage = (d: number) => {
+    const j = sel + d;
+    if (j < 0 || j >= images.length) return;
+    const n = [...images];
+    [n[sel], n[j]] = [n[j], n[sel]];
+    setImages(n);
+    setSel(j);
+    touch();
+  };
+  const removeImage = () => {
+    if (!cur || !window.confirm(`${sel + 1}번째 사진을 뺄까요? (저장해야 반영됩니다)`)) return;
+    setImages(list => list.filter((_, k) => k !== sel));
+    setSel(k => Math.max(0, Math.min(k, images.length - 2)));
+    setDrawingId(null);
+    touch();
+  };
+  const setCaption = (v: string) => {
+    setImages(list => list.map((im, k) => (k === sel ? { ...im, caption: v } : im)));
+    touch();
+  };
+  const setHotspot = (itemId: string, h: Omit<Hotspot, 'itemId'> | null) => {
+    setImages(list => list.map((im, k) => {
+      if (k !== sel) return im;
+      const rest = im.hotspots.filter(x => x.itemId !== itemId);
+      return { ...im, hotspots: h ? [...rest, { itemId, ...h }] : rest };
+    }));
+    touch();
   };
 
   const addItemWithGlb = async (file?: File) => {
@@ -306,7 +352,7 @@ function Editor({
     try {
       setBusy(b => ({ ...b, [id]: 0 }));
       const glbPath = await uploadFile(share.id, file, p => setBusy(b => ({ ...b, [id]: p })));
-      const next = [...items, { id, name, glbPath, posterPath: null, x: null, y: null, w: null, h: null }];
+      const next = [...items, { id, name, glbPath, posterPath: null }];
       setItems(next);
       await save({ items: next });
     } catch (e) {
@@ -365,10 +411,11 @@ function Editor({
   const removeItem = (id: string) => {
     if (!window.confirm('이 항목을 목록에서 뺄까요? (저장해야 반영됩니다)')) return;
     setItems(list => list.filter(i => i.id !== id));
+    setImages(list => list.map(im => ({ ...im, hotspots: im.hotspots.filter(h => h.itemId !== id) })));
     touch();
   };
 
-  // 대표 이미지 위에 드래그로 클릭 영역 지정
+  // 선택한 사진 위에 드래그로 클릭 영역 지정
   const pctAt = (e: React.PointerEvent) => {
     const r = stageRef.current!.getBoundingClientRect();
     return {
@@ -393,7 +440,7 @@ function Editor({
     startRef.current = null;
     if (draft && draft.w > 1 && draft.h > 1) {
       const r = (n: number) => Math.round(n * 10) / 10;
-      updateItem(drawingId, { x: r(draft.x), y: r(draft.y), w: r(draft.w), h: r(draft.h) });
+      setHotspot(drawingId, { x: r(draft.x), y: r(draft.y), w: r(draft.w), h: r(draft.h) });
       setDrawingId(null);
     }
     setDraft(null);
@@ -427,6 +474,8 @@ function Editor({
   };
 
   const posterUrl = (i: ShareItem) => localPosters[i.id] || (i.posterPath ? urls[i.posterPath] : undefined);
+  const spotOn = (itemId: string) => cur?.hotspots.find(h => h.itemId === itemId) || null;
+  const spotCount = (itemId: string) => images.filter(im => im.hotspots.some(h => h.itemId === itemId)).length;
   const input = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:border-white/40';
 
   return (
@@ -471,50 +520,80 @@ function Editor({
         </label>
       </section>
 
-      {/* 대표 이미지 */}
+      {/* 사진 (슬라이드) */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">대표 이미지</div>
+          <div className="text-sm font-semibold">사진 ({images.length})</div>
           <label className="px-3 py-1.5 bg-white/10 rounded-lg text-xs cursor-pointer">
-            {'cover' in busy ? `올리는 중 ${busy.cover}%` : cover.path ? '이미지 바꾸기' : '이미지 올리기'}
-            <input type="file" accept="image/*" hidden onChange={e => onCover(e.target.files?.[0])} />
+            {'images' in busy ? `올리는 중 ${busy.images}` : '+ 사진 추가 (여러 장 가능)'}
+            <input type="file" accept="image/*" multiple hidden onChange={e => { addImages(e.target.files); e.target.value = ''; }} />
           </label>
         </div>
-        {cover.url ? (
-          <div
-            ref={stageRef}
-            className={`relative rounded-xl overflow-hidden select-none ${drawingId ? 'cursor-crosshair ring-2 ring-emerald-400' : ''}`}
-            onPointerDown={onDown}
-            onPointerMove={onMove}
-            onPointerUp={onUp}
-            style={{ touchAction: drawingId ? 'none' : 'auto' }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover.url} alt="" className="w-full h-auto block pointer-events-none" draggable={false} />
-            {items.filter(i => i.w && i.h && i.id !== drawingId).map(i => (
-              <div
-                key={i.id}
-                className="absolute border-2 border-white/90 rounded-xl bg-white/10 pointer-events-none"
-                style={{ left: `${i.x}%`, top: `${i.y}%`, width: `${i.w}%`, height: `${i.h}%` }}
+
+        {images.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {images.map((im, k) => (
+              <button
+                key={im.id}
+                onClick={() => { setSel(k); setDrawingId(null); }}
+                className={`relative shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 ${k === sel ? 'border-white' : 'border-transparent opacity-60'}`}
               >
-                <span className="absolute -top-6 left-0 text-[11px] bg-black/80 px-2 py-0.5 rounded">{i.name}</span>
-              </div>
+                {im.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={im.url} alt="" className="w-full h-full object-cover" />
+                ) : <span className="text-[10px] text-white/40">사진 {k + 1}</span>}
+                <span className="absolute left-1 top-1 text-[10px] bg-black/70 px-1 rounded">{k + 1}</span>
+                {im.hotspots.length > 0 && <span className="absolute right-1 bottom-1 text-[9px] bg-emerald-500 text-black px-1 rounded">3D {im.hotspots.length}</span>}
+              </button>
             ))}
-            {draft && (
-              <div className="absolute border-2 border-emerald-400 rounded-xl bg-emerald-400/15 pointer-events-none"
-                style={{ left: `${draft.x}%`, top: `${draft.y}%`, width: `${draft.w}%`, height: `${draft.h}%` }} />
-            )}
-            {drawingId && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/80 text-xs px-3 py-1.5 rounded-full pointer-events-none">
-                {items.find(i => i.id === drawingId)?.name} 위치를 드래그로 지정하세요
-              </div>
-            )}
           </div>
-        ) : cover.path ? (
-          <div className="rounded-xl border border-white/10 p-6 text-sm text-white/40">이미지를 불러오는 중이거나 미리보기 링크가 만료되었습니다. 새로고침해 주세요.</div>
+        )}
+
+        {cur ? (
+          <>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input className={`${input} flex-1 min-w-[200px]`} value={cur.caption || ''} onChange={e => setCaption(e.target.value)} placeholder={`${sel + 1}번째 사진 설명 (선택, 예: 콘셉트 02 · 측면)`} />
+              <button onClick={() => moveImage(-1)} disabled={sel === 0} className="px-2.5 py-2 bg-white/10 rounded-lg text-xs disabled:opacity-30">← 앞으로</button>
+              <button onClick={() => moveImage(1)} disabled={sel === images.length - 1} className="px-2.5 py-2 bg-white/10 rounded-lg text-xs disabled:opacity-30">뒤로 →</button>
+              <button onClick={removeImage} className="px-2.5 py-2 bg-red-500/15 text-red-300 rounded-lg text-xs">사진 빼기</button>
+            </div>
+            {cur.url ? (
+              <div
+                ref={stageRef}
+                className={`relative rounded-xl overflow-hidden select-none ${drawingId ? 'cursor-crosshair ring-2 ring-emerald-400' : ''}`}
+                onPointerDown={onDown}
+                onPointerMove={onMove}
+                onPointerUp={onUp}
+                style={{ touchAction: drawingId ? 'none' : 'auto' }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={cur.url} alt="" className="w-full h-auto block pointer-events-none" draggable={false} />
+                {cur.hotspots.filter(h => h.itemId !== drawingId).map(h => (
+                  <div
+                    key={h.itemId}
+                    className="absolute border-2 border-white/90 rounded-xl bg-white/10 pointer-events-none"
+                    style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
+                  >
+                    <span className="absolute -top-6 left-0 text-[11px] bg-black/80 px-2 py-0.5 rounded">{items.find(i => i.id === h.itemId)?.name}</span>
+                  </div>
+                ))}
+                {draft && (
+                  <div className="absolute border-2 border-emerald-400 rounded-xl bg-emerald-400/15 pointer-events-none"
+                    style={{ left: `${draft.x}%`, top: `${draft.y}%`, width: `${draft.w}%`, height: `${draft.h}%` }} />
+                )}
+                {drawingId && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/80 text-xs px-3 py-1.5 rounded-full pointer-events-none">
+                    {items.find(i => i.id === drawingId)?.name} 위치를 드래그로 지정하세요
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/10 p-6 text-sm text-white/40">사진 미리보기 링크가 만료되었습니다. 새로고침해 주세요.</div>
+            )}
+          </>
         ) : (
           <div className="rounded-xl border border-dashed border-white/15 p-8 text-sm text-white/40 text-center">
-            대표 이미지를 올리면 그 위에 클릭 위치를 지정할 수 있습니다. (없어도 버튼으로 3D를 볼 수 있습니다)
+            사진을 올리면 거래처 화면에서 넘겨 볼 수 있고, 사진마다 3D 클릭 위치를 지정할 수 있습니다. (없어도 버튼으로 3D를 볼 수 있습니다)
           </div>
         )}
       </section>
@@ -541,10 +620,14 @@ function Editor({
               </label>
               <input className={`${input} md:max-w-[200px]`} value={i.name} onChange={e => updateItem(i.id, { name: e.target.value })} />
               <div className="flex-1 text-xs text-white/40">
-                {i.id in busy ? `GLB 올리는 중 ${busy[i.id]}%` : i.w ? '위치 지정됨' : cover.url ? '위치 미지정 (버튼으로만 표시)' : ''}
+                {i.id in busy
+                  ? `GLB 올리는 중 ${busy[i.id]}%`
+                  : cur
+                    ? `${spotOn(i.id) ? `${sel + 1}번 사진에 위치 지정됨` : `${sel + 1}번 사진엔 위치 없음`}${images.length > 1 ? ` · 전체 ${spotCount(i.id)}장` : ''}`
+                    : ''}
               </div>
               <div className="flex gap-1.5 flex-wrap">
-                {cover.url && (
+                {cur?.url && (
                   <>
                     <button
                       onClick={() => setDrawingId(drawingId === i.id ? null : i.id)}
@@ -552,7 +635,7 @@ function Editor({
                     >
                       {drawingId === i.id ? '지정 취소' : '위치 지정'}
                     </button>
-                    {i.w ? <button onClick={() => updateItem(i.id, { x: null, y: null, w: null, h: null })} className="px-2.5 py-1.5 bg-white/10 rounded-lg text-xs">위치 지우기</button> : null}
+                    {spotOn(i.id) ? <button onClick={() => setHotspot(i.id, null)} className="px-2.5 py-1.5 bg-white/10 rounded-lg text-xs">위치 지우기</button> : null}
                   </>
                 )}
                 <label className="px-2.5 py-1.5 bg-white/10 rounded-lg text-xs cursor-pointer">
@@ -565,7 +648,7 @@ function Editor({
               </div>
             </li>
           ))}
-          {Object.keys(busy).filter(k => !items.some(i => i.id === k) && k !== 'cover' && !k.startsWith('p-')).map(k => (
+          {Object.keys(busy).filter(k => !items.some(i => i.id === k) && k !== 'images' && !k.startsWith('p-')).map(k => (
             <li key={k} className="rounded-xl border border-white/10 p-3 text-xs text-white/50">새 GLB 올리는 중 {busy[k]}%</li>
           ))}
         </ul>

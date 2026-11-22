@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminGuard';
 import { newShareToken, signPaths } from '@/lib/shareStorage';
-import type { ShareItem } from '@/lib/shareTypes';
+import { imagesOf, type ShareItem } from '@/lib/shareTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const paths: string[] = [];
   for (const s of shares) {
     if (s.coverPath) paths.push(s.coverPath);
+    for (const im of imagesOf(s)) paths.push(im.path);
     for (const it of (s.items as unknown as ShareItem[]) || []) if (it.posterPath) paths.push(it.posterPath);
   }
   let urls: Record<string, string> = {};

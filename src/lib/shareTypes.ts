@@ -10,6 +10,24 @@ export interface ShareItem {
   h?: number | null;
 }
 
+export interface Hotspot {
+  itemId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** 슬라이드 사진 한 장. 클릭 위치(hotspots)는 사진마다 따로 */
+export interface ShareImage {
+  id: string;
+  path: string;
+  width: number | null;
+  height: number | null;
+  caption?: string | null;
+  hotspots: Hotspot[];
+}
+
 export interface ShareRecord {
   id: string;
   token: string;
@@ -20,6 +38,7 @@ export interface ShareRecord {
   coverWidth: number | null;
   coverHeight: number | null;
   items: ShareItem[];
+  images: ShareImage[];
   expiresAt: string | null;
   revoked: boolean;
   viewCount: number;
@@ -40,12 +59,43 @@ export interface ViewerItem {
   h?: number | null;
 }
 
+export interface ViewerImage {
+  id: string;
+  url: string;
+  width: number | null;
+  height: number | null;
+  caption: string | null;
+  hotspots: Hotspot[];
+}
+
 export interface ViewerData {
   title: string;
   note: string | null;
-  coverUrl: string | null;
-  coverWidth: number | null;
-  coverHeight: number | null;
+  images: ViewerImage[];
   items: ViewerItem[];
   expiresAt: string | null;
+}
+
+/** 예전 방식(대표 이미지 1장 + 항목별 x,y,w,h)을 사진 목록으로 바꿔 읽는다 */
+export function imagesOf(share: {
+  images?: unknown;
+  coverPath: string | null;
+  coverWidth: number | null;
+  coverHeight: number | null;
+  items?: unknown;
+}): ShareImage[] {
+  const list = Array.isArray(share.images) ? (share.images as ShareImage[]) : [];
+  if (list.length > 0) return list;
+  if (!share.coverPath) return [];
+  const items = (Array.isArray(share.items) ? share.items : []) as ShareItem[];
+  return [{
+    id: 'cover',
+    path: share.coverPath,
+    width: share.coverWidth,
+    height: share.coverHeight,
+    caption: null,
+    hotspots: items
+      .filter(i => i.w && i.h)
+      .map(i => ({ itemId: i.id, x: i.x || 0, y: i.y || 0, w: i.w || 0, h: i.h || 0 })),
+  }];
 }

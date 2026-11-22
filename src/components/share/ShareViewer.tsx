@@ -24,6 +24,12 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [anim, setAnim] = useState<AnimState>('none');
+  const [slide, setSlide] = useState(0);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const swipeX = useRef<number | null>(null);
+  // 사진 영역 비율: 가장 세로로 긴 사진에 맞춘다 (넘길 때 화면 높이가 흔들리지 않게)
+  const stageRatio = data.images.reduce((r, im) => (im.width && im.height ? Math.min(r, im.width / im.height) : r), 16 / 9);
   const mvRef = useRef<MV | null>(null);
   // 마지막으로 다 불러온 GLB 주소. 같은 제품을 다시 열면 다시 불러오지 않고 그대로 보여 준다.
   const loadedUrl = useRef<string | null>(null);
@@ -83,6 +89,30 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
 
   const close = useCallback(() => setCurrent(null), []);
 
+  const go = useCallback((d: number) => {
+    const n = data.images.length;
+    if (n > 1) setSlide(k => (k + d + n) % n);
+  }, [data.images.length]);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setBox({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [data.images.length]);
+
+  // 3D 창이 닫혀 있을 때 좌우 화살표 키로 사진 넘기기
+  useEffect(() => {
+    if (current) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') go(1);
+      if (e.key === 'ArrowLeft') go(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [current, go]);
+
   const toggleAnim = useCallback(() => {
     const el = mvRef.current;
     if (!el?.play || (anim !== 'closed' && anim !== 'open')) return;
@@ -123,8 +153,17 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
     }
   }, [item]);
 
-  const hasCover = Boolean(data.coverUrl);
   const expires = data.expiresAt ? new Date(data.expiresAt) : null;
+  const images = data.images;
+  const img = images[slide] || null;
+  const many = images.length > 1;
+  const hasHotspots = images.some(im => im.hotspots.length > 0);
+  const nameOf = (id: string) => items.find(i => i.id === id)?.name || '';
+
+  // 사진 영역 안에서 사진이 차지하는 실제 크기 (사진마다 비율이 달라도 클릭 위치가 정확히 맞도록)
+  const ratio = img && img.width && img.height ? img.width / img.height : 16 / 10;
+  const fw = box.w && box.h ? Math.min(box.w, box.h * ratio) : 0;
+  const fh = fw ? fw / ratio : 0;
 
   return (
     <div className={s.page}>
@@ -142,37 +181,69 @@ export default function ShareViewer({ data }: { data: ViewerData }) {
 
         {data.note && <p className={s.note}>{data.note}</p>}
 
-        {hasCover && (
-          <div className={s.stage}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={data.coverUrl!}
-              alt={data.title}
-              width={data.coverWidth || undefined}
-              height={data.coverHeight || undefined}
-              draggable={false}
-            />
-            {items
-              .filter(i => i.w && i.h)
-              .map(i => (
-                <button
-                  key={i.id}
-                  className={s.hot}
-                  style={{ left: `${i.x}%`, top: `${i.y}%`, width: `${i.w}%`, height: `${i.h}%` }}
-                  onClick={() => show(i.id)}
-                  aria-label={`${i.name} 3D 보기`}
-                >
-                  <span className={s.dot}>3D</span>
-                  <span className={s.label}>{i.name} · 3D 보기</span>
-                </button>
-              ))}
-          </div>
+        {img && (
+          <>
+            <div
+              ref={stageRef}
+              className={s.stage}
+              style={{ aspectRatio: String(stageRatio) }}
+              onPointerDown={e => { swipeX.current = e.clientX; }}
+              onPointerUp={e => {
+                if (swipeX.current === null || !many) return;
+                const dx = e.clientX - swipeX.current;
+                swipeX.current = null;
+                if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+              }}
+            >
+              {fw > 0 && (
+                <div className={s.frame} style={{ width: fw, height: fh }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img key={img.id} src={img.url} alt={img.caption || data.title} draggable={false} />
+                  {img.hotspots.map(h => (
+                    <button
+                      key={h.itemId + h.x}
+                      className={s.hot}
+                      style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
+                      onClick={() => show(h.itemId)}
+                      aria-label={`${nameOf(h.itemId)} 3D 보기`}
+                    >
+                      <span className={s.dot}>3D</span>
+                      <span className={s.label}>{nameOf(h.itemId)} · 3D 보기</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {many && (
+                <>
+                  <button className={`${s.arrow} ${s.prev}`} onClick={() => go(-1)} aria-label="이전 사진">‹</button>
+                  <button className={`${s.arrow} ${s.next}`} onClick={() => go(1)} aria-label="다음 사진">›</button>
+                  <span className={s.counter}>{slide + 1} / {images.length}</span>
+                </>
+              )}
+            </div>
+            {img.caption && <p className={s.caption}>{img.caption}</p>}
+            {many && (
+              <div className={s.thumbs}>
+                {images.map((im, k) => (
+                  <button
+                    key={im.id}
+                    className={`${s.thumb} ${k === slide ? s.thumbOn : ''}`}
+                    onClick={() => setSlide(k)}
+                    aria-label={`${k + 1}번째 사진`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={im.url} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {items.length > 0 && (
           <>
             <p className={s.hint}>
-              {hasCover ? '캐릭터를 클릭하면 3D 데이터를 돌려 보실 수 있습니다.' : '항목을 클릭하면 3D 데이터를 돌려 보실 수 있습니다.'}
+              {hasHotspots ? '사진 속 3D 표시를 누르거나 아래 버튼을 누르면 3D 데이터를 돌려 보실 수 있습니다.' : '아래 버튼을 누르면 3D 데이터를 돌려 보실 수 있습니다.'}
             </p>
             <div className={s.chips}>
               {items.map(i => (

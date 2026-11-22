@@ -55,6 +55,7 @@ model Share {
   coverWidth   Int?
   coverHeight  Int?
   items        Json      @default("[]") // [{id,name,glbPath,posterPath?,x,y,w,h}] 좌표는 % 단위
+  images       Json      @default("[]") // [{id,path,width,height,caption?,hotspots:[{itemId,x,y,w,h}]}] 슬라이드 사진. 비어 있으면 coverPath 사용
   expiresAt    DateTime?
   revoked      Boolean   @default(false)
   viewCount    Int       @default(0)
