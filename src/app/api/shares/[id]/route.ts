@@ -6,6 +6,7 @@ import type { ShareItem } from '@/lib/shareTypes';
 // PATCH/DELETE는 미들웨어에서 관리자 세션을 확인한다.
 
 const pct = (v: unknown) => {
+  if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : null;
 };
@@ -19,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const data: Record<string, unknown> = {};
   const ownPath = (p: unknown) => typeof p === 'string' && p.startsWith(`${id}/`) ? p : null;
 
-  if ('title' in body) data.title = String(body.title || '').trim() || share.title;
+  if ('title' in body) data.title = String(body.title || '').normalize('NFC').trim() || share.title;
   if ('client' in body) data.client = body.client ? String(body.client).trim() : null;
   if ('note' in body) data.note = body.note ? String(body.note) : null;
   if ('coverPath' in body) data.coverPath = ownPath(body.coverPath);
@@ -36,7 +37,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (!glbPath) continue;
       items.push({
         id: String(raw.id || Math.random().toString(36).slice(2, 10)),
-        name: String(raw.name || '').trim() || '이름 없음',
+        name: String(raw.name || '').normalize('NFC').trim() || '이름 없음',
         glbPath,
         posterPath: ownPath(raw.posterPath),
         x: pct(raw.x), y: pct(raw.y), w: pct(raw.w), h: pct(raw.h),
